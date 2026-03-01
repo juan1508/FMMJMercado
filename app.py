@@ -408,7 +408,7 @@ PLAYER_DATA = {
     "A. Onana":            {"pos": "GK",  "nat": "cm", "nat_name": "Camerún",        "sofifa": 226753},
     "A. Laporte":          {"pos": "DEF", "nat": "es", "nat_name": "España",         "sofifa": 212218},
     "V. Osimhen":          {"pos": "FWD", "nat": "ng", "nat_name": "Nigeria",        "sofifa": 232293},
-    "R. Araujo":           {"pos": "DEF", "nat": "uy", "nat_name": "Uruguay",        "sofifa": 246340},
+    "R. Araujo":           {"pos": "DEF", "nat": "uy", "nat_name": "Uruguay",        "sofifa": 253163},
     "João Félix":          {"pos": "FWD", "nat": "pt", "nat_name": "Portugal",       "sofifa": 242444},
     "Stefan Bajcetic":     {"pos": "MID", "nat": "es", "nat_name": "España",         "sofifa": 271975},
     "L. Abada":            {"pos": "FWD", "nat": "il", "nat_name": "Israel",         "sofifa": 263377},
