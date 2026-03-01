@@ -383,7 +383,7 @@ PLAYER_DATA = {
     "A. Rabiot":           {"pos": "MID", "nat": "fr", "nat_name": "Francia",        "sofifa": 210008},
     "M. Depay":            {"pos": "FWD", "nat": "nl", "nat_name": "Países Bajos",   "sofifa": 202556},
     "J. Koundé":           {"pos": "DEF", "nat": "fr", "nat_name": "Francia",        "sofifa": 241486},
-    "A. Balde":            {"pos": "DEF", "nat": "es", "nat_name": "España",         "sofifa": 253578},
+    "A. Balde":            {"pos": "DEF", "nat": "es", "nat_name": "España",         "sofifa": 263578},
     "A. Ezzalzouli":       {"pos": "FWD", "nat": "ma", "nat_name": "Marruecos",      "sofifa": 264432},
     "D. Moreira":          {"pos": "MID", "nat": "pt", "nat_name": "Portugal",       "sofifa": 270039},
     "L. Miley":            {"pos": "MID", "nat": "gb-eng","nat_name": "Inglaterra",  "sofifa": 274246},
