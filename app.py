@@ -723,14 +723,11 @@ def load_full_data():
         {"name":"H. Son",         "team":"ATX",  "price":56500000, "renovation":28250000, "clausula":254250000, "contrato":"1 Season",     "cesion":None},
         {"name":"K. Benzema",     "team":"NE",   "price":26000000, "renovation":13000000, "clausula":117000000, "contrato":"1 Season",     "cesion":None},
         {"name":"J. Álvarez",     "team":"SDFC", "price":94000000, "renovation":47000000, "clausula":423000000, "contrato":"2 Season",     "cesion":None},
-        {"name":"A. Isak",        "team":"SEA",  "price":89500000, "renovation":44750000, "clausula":402750000, "contrato":"1 Season",     "cesion":None},
         {"name":"P. Dybala",      "team":"LAFC", "price":81000000, "renovation":40500000, "clausula":364500000, "contrato":"1 Season",     "cesion":None},
         {"name":"Bruno Fernandes","team":"MTL",  "price":69000000, "renovation":34500000, "clausula":310500000, "contrato":"1 Season",     "cesion":None},
         {"name":"P. Foden",       "team":"NE",   "price":88000000, "renovation":44000000, "clausula":396000000, "contrato":"Cesion Larga", "cesion":"PHI"},
         {"name":"F. de Jong",     "team":"SKC",  "price":77500000, "renovation":38750000, "clausula":348750000, "contrato":"1 Season",     "cesion":None},
         {"name":"G. Xhaka",       "team":"CIN",  "price":47500000, "renovation":23750000, "clausula":213750000, "contrato":"1 Season",     "cesion":None},
-        {"name":"A. Mac Allister","team":"MIA",  "price":84500000, "renovation":42250000, "clausula":380250000, "contrato":"1 Season",     "cesion":None},
-        {"name":"H. Çalhanoğlu",  "team":"VAN",  "price":57000000, "renovation":28500000, "clausula":256500000, "contrato":"1 Season",     "cesion":None},
         {"name":"Rúben Dias",     "team":"MIA",  "price":68500000, "renovation":34250000, "clausula":308250000, "contrato":"1 Season",     "cesion":None},
         {"name":"T. Alexander-Arnold","team":"SKC","price":74000000,"renovation":37000000,"clausula":333000000, "contrato":"1 Season",     "cesion":None},
         {"name":"T. Hernández",   "team":"ATL",  "price":73000000, "renovation":36500000, "clausula":328500000, "contrato":"1 Season",     "cesion":None},
@@ -774,7 +771,6 @@ def load_full_data():
         {"name":"Sergio Ramos",   "team":"STL",  "price":2000000,  "renovation":1000000,  "clausula":9000000,   "contrato":"1 Season",     "cesion":None},
         {"name":"M. Hummels",     "team":"ATX",  "price":69000000, "renovation":34500000, "clausula":310500000, "contrato":"Cesion Larga", "cesion":"STL"},
         {"name":"A. Davies",      "team":"NHS",  "price":74000000, "renovation":37000000, "clausula":333000000, "contrato":"1 Season",     "cesion":None},
-        {"name":"J. Stones",      "team":"SKC",  "price":34500000, "renovation":17250000, "clausula":155250000, "contrato":"1 Season",     "cesion":None},
         {"name":"Alex Remiro",    "team":"SJ",   "price":32500000, "renovation":16250000, "clausula":146250000, "contrato":"1 Season",     "cesion":None},
         {"name":"M. Neuer",       "team":"ATX",  "price":7000000,  "renovation":3500000,  "clausula":31500000,  "contrato":"Cesion Larga", "cesion":"CLB"},
         {"name":"Diogo Costa",    "team":"RBNY", "price":54000000, "renovation":27000000, "clausula":243000000, "contrato":"1 Season",     "cesion":None},
@@ -951,6 +947,8 @@ def load_full_data():
         {"name":"T. Land",        "team":"PHI",  "price":1600000,  "renovation":800000,   "clausula":7200000,   "contrato":"1 Season",     "cesion":None},
         {"name":"K. Gordon",      "team":"VAN",  "price":1000000,  "renovation":500000,   "clausula":4500000,   "contrato":"1 Season",     "cesion":None},
         {"name":"Y. Eduardo",     "team":"CLB",  "price":1300000,  "renovation":650000,   "clausula":5850000,   "contrato":"1 Season",     "cesion":None},
+        {"name":"M. Llorente",    "team":"MIN",  "price":32000000,  "renovation":16000000,   "clausula":144000000,   "contrato":"1 Season",     "cesion":None},
+        {"name":"F. Chiesa",     "team":"HOU",  "price":50000000,  "renovation":25000000,   "clausula":225000000,   "contrato":"1 Season",     "cesion":None},
     ]
     df = pd.DataFrame(raw)
     df = df[df["name"].isin(PLAYER_DATA.keys())].drop_duplicates(subset=["name"]).reset_index(drop=True)
