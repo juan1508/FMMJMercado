@@ -473,7 +473,7 @@ PLAYER_DATA = {
     "B. Barcola":          {"pos": "FWD", "nat": "fr", "nat_name": "Francia",        "sofifa": 264652},
     "Q. Sullivan":         {"pos": "MID", "nat": "us", "nat_name": "EE.UU.",         "sofifa": 260547},
     "Iker Bravo":          {"pos": "FWD", "nat": "es", "nat_name": "España",         "sofifa": 265194},
-    "T. Land":             {"pos": "DEF", "nat": "nl", "nat_name": "Países Bajos",   "sofifa": 275411},
+    "T. Land":             {"pos": "MID", "nat": "nl", "nat_name": "Países Bajos",   "sofifa": 275411},
     "É. Mendy":            {"pos": "GK",  "nat": "sn", "nat_name": "Senegal",        "sofifa": 234642},
     "A. Griezmann":        {"pos": "FWD", "nat": "fr", "nat_name": "Francia",        "sofifa": 194765},
     "L. Paqueta":          {"pos": "MID", "nat": "br", "nat_name": "Brasil",         "sofifa": 233927},
