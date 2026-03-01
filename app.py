@@ -590,7 +590,7 @@ TEAM_FULL_NAMES = {
 # President → teams mapping
 PRESIDENTS = {
     "JNKA": {"color": "#e8b84b", "teams": ["LAFC","ATL","VAN","ATX","CHI","SJ","DAL","DCU","NE","MIA"]},
-    "MATI": {"color": "#3b82f6", "teams": ["NSH","MTL","POR","HOU","CLB","SEA","SKC","SDFC","ORL","MIN"]},
+    "MATI": {"color": "#3b82f6", "teams": ["NHS","MTL","POR","HOU","CLB","SEA","SKC","SDFC","ORL","MIN"]},
     "MAXI": {"color": "#a78bfa", "teams": ["NYC","PHI","TOR","STL","CLT","CIN","RBNY","COL","RSL","LA"]},
 }
 
