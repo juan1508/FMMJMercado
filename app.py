@@ -420,7 +420,7 @@ PLAYER_DATA = {
     "Rúben Dias":          {"pos": "DEF", "nat": "pt", "nat_name": "Portugal",       "sofifa": 239818},
     "Neymar Jr":           {"pos": "FWD", "nat": "br", "nat_name": "Brasil",         "sofifa": 190871},
     "G. Reyna":            {"pos": "MID", "nat": "us", "nat_name": "EE.UU.",         "sofifa": 245541},
-    "B. Castro":           {"pos": "MID", "nat": "co", "nat_name": "Colombia",       "sofifa": 271549},
+    "B. Castro":           {"pos": "MID", "nat": "co", "nat_name": "Colombia",       "sofifa": 000000},
     "O. Cortés":           {"pos": "MID", "nat": "co", "nat_name": "Colombia",       "sofifa": 266673},
     "K. Páez":             {"pos": "MID", "nat": "ec", "nat_name": "Ecuador",        "sofifa": 274559},
     "K. Navas":            {"pos": "GK",  "nat": "cr", "nat_name": "Costa Rica",     "sofifa": 0},
