@@ -33,16 +33,19 @@ st.markdown("""
   [data-testid="stMetricValue"] { color: #e8b84b !important; font-family: 'Space Mono', monospace; font-size: 1.2rem !important; }
   [data-testid="stMetricLabel"] { color: #5a7080 !important; font-size: 0.68rem !important; text-transform: uppercase; letter-spacing: 2px; }
 
-  /* ── PAGE TITLES — fixed overflow ── */
+  /* ── PAGE TITLES ── */
   .page-title {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(1.8rem, 4vw, 2.8rem);
-    letter-spacing: 6px;
+    font-size: 2.4rem;
+    letter-spacing: 5px;
     color: #e8b84b;
     margin-bottom: 2px;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: break-word;
     overflow: visible;
     line-height: 1.1;
+    display: block;
+    width: 100%;
     text-shadow: 0 0 40px rgba(232,184,75,0.3);
   }
   .page-sub {
@@ -51,6 +54,29 @@ st.markdown("""
     text-transform: uppercase;
     letter-spacing: 3px;
     margin-bottom: 16px;
+    display: block;
+    width: 100%;
+  }
+  .mmj-header-bar {
+    display: block !important;
+    width: 100%;
+    overflow: visible !important;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(232,184,75,0.15);
+  }
+  .mmj-header-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .mmj-accent-line {
+    width: 4px;
+    min-height: 48px;
+    background: linear-gradient(180deg, #e8b84b, rgba(232,184,75,0.1));
+    border-radius: 2px;
+    flex-shrink: 0;
+    margin-top: 4px;
   }
 
   /* ── Player card ── */
@@ -211,22 +237,7 @@ st.markdown("""
     letter-spacing: 4px;
   }
 
-  /* ── Decorative header bar ── */
-  .mmj-header-bar {
-    display: flex;
-    align-items: flex-end;
-    gap: 16px;
-    margin-bottom: 20px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid rgba(232,184,75,0.15);
-  }
-  .mmj-accent-line {
-    width: 4px;
-    height: 48px;
-    background: linear-gradient(180deg, #e8b84b, rgba(232,184,75,0.1));
-    border-radius: 2px;
-    flex-shrink: 0;
-  }
+  /* header bar defined above */
 </style>
 """, unsafe_allow_html=True)
 
@@ -992,15 +1003,16 @@ with st.sidebar:
 
 # ── Helper: page header with accent line ──────────────────────────────────────
 def page_header(title, subtitle):
-    st.markdown(f"""
-    <div class="mmj-header-bar">
-      <div class="mmj-accent-line"></div>
-      <div>
-        <div class="page-title">{title}</div>
-        <div class="page-sub">{subtitle}</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+    html = (
+        '<div class="mmj-header-bar">'
+        '<div class="mmj-header-inner">'
+        '<div class="mmj-accent-line"></div>'
+        '<div style="flex:1;min-width:0;overflow:visible;">'
+        '<div class="page-title">' + title +
+        '</div><div class="page-sub">' + subtitle +
+        '</div></div></div></div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1073,50 +1085,65 @@ if page == "⚽ Jugadores":
         flag_html  = f'<img src="{flag_url}" style="width:18px;height:13px;object-fit:cover;border-radius:2px;vertical-align:middle;" />' if flag_url else ""
         tlogo_html = f'<img src="{team_logo}" style="width:22px;height:22px;object-fit:contain;border-radius:50%;vertical-align:middle;background:rgba(255,255,255,0.04);" />' if team_logo else ""
 
-        # BUG FIX: Build loan_html using single quotes inside HTML attributes
-        if pd.notna(row.get("cesion")):
-            orig_logo_html = f'<img src=\'{orig_logo}\' style=\'width:18px;height:18px;object-fit:contain;border-radius:50%;vertical-align:middle;\' />' if orig_logo else ""
-            loan_html = (
-                f'<div style=\'display:flex;align-items:center;gap:4px;margin-top:3px;\'>'
-                f'{orig_logo_html}'
-                f'<span style=\'font-size:0.62rem;color:#f97316;font-weight:700;\'>{row["cesion"]}</span>'
-                f'<span style=\'font-size:0.62rem;color:#5a7080;\'>&#8594; cedido a</span>'
-                f'{tlogo_html}'
-                f'<span style=\'font-size:0.62rem;color:#e2eaf4;font-weight:600;\'>{row["team"]}</span>'
-                f'</div>'
-            )
-        else:
-            loan_html = (
-                f'<div style=\'display:flex;align-items:center;gap:4px;margin-top:3px;\'>'
-                f'{tlogo_html}'
-                f'<span style=\'font-size:0.7rem;color:#7a9db0;\'>{row["team"]} &middot; {TEAM_FULL_NAMES.get(row["team"],"")}</span>'
-                f'</div>'
-            )
-
-        contrato_html = contrato_badge(row["contrato"])
         pos_bg  = pos_color + "22"
         pos_bdr = pos_color + "44"
+        contrato_html = contrato_badge(row["contrato"])
 
-        st.markdown(f"""
-        <div class="player-row">
-          <img src="{photo_url}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid rgba(232,184,75,0.35);flex-shrink:0;background:#0a1520;"
-               onerror="this.onerror=null;this.src='{fallback}'" />
-          <div style="flex:1;min-width:0;overflow:hidden;">
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-              <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:800;color:#f0f4f8;white-space:nowrap;">{row["name"]}</span>
-              <span style="background:{pos_bg};color:{pos_color};border:1px solid {pos_bdr};font-size:0.55rem;font-weight:900;letter-spacing:1.5px;padding:1px 6px;border-radius:3px;flex-shrink:0;">{pos}</span>
-              {flag_html}
-              <span style="font-size:0.65rem;color:#5a7080;white-space:nowrap;">{nat_name}</span>
-            </div>
-            {loan_html}
-          </div>
-          <div style="text-align:right;flex-shrink:0;min-width:120px;">
-            <div style="font-family:'Space Mono',monospace;font-size:0.88rem;font-weight:700;color:#e8b84b;">{fmt_money(row["price"])}</div>
-            <div style="font-size:0.6rem;color:#5a7080;">Cláus: {fmt_money(row["clausula"])}</div>
-            <div style="margin-top:3px;">{contrato_html}</div>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Build team/loan info using string concatenation - NO f-string escaping issues
+        if pd.notna(row.get("cesion")):
+            orig_logo2 = TEAM_LOGOS.get(row.get("cesion"), "")
+            if orig_logo2:
+                olo2 = '<img src="' + orig_logo2 + '" style="width:18px;height:18px;object-fit:contain;border-radius:50%;vertical-align:middle;" />'
+            else:
+                olo2 = ""
+            if tlogo_html:
+                tl2 = '<img src="' + TEAM_LOGOS.get(row["team"], "") + '" style="width:22px;height:22px;object-fit:contain;border-radius:50%;vertical-align:middle;background:rgba(255,255,255,0.04);" />'
+            else:
+                tl2 = ""
+            loan_html_final = (
+                '<div style="display:flex;align-items:center;gap:4px;margin-top:3px;">'
+                + olo2
+                + '<span style="font-size:0.62rem;color:#f97316;font-weight:700;">' + str(row["cesion"]) + '</span>'
+                + '<span style="font-size:0.62rem;color:#5a7080;">&#8594; cedido a</span>'
+                + tl2
+                + '<span style="font-size:0.62rem;color:#e2eaf4;font-weight:600;">' + str(row["team"]) + '</span>'
+                + '</div>'
+            )
+        else:
+            team_full = TEAM_FULL_NAMES.get(row["team"], "")
+            tl3 = '<img src="' + TEAM_LOGOS.get(row["team"], "") + '" style="width:22px;height:22px;object-fit:contain;border-radius:50%;vertical-align:middle;background:rgba(255,255,255,0.04);" />' if TEAM_LOGOS.get(row["team"]) else ""
+            loan_html_final = (
+                '<div style="display:flex;align-items:center;gap:4px;margin-top:3px;">'
+                + tl3
+                + '<span style="font-size:0.7rem;color:#7a9db0;">' + str(row["team"]) + ' &middot; ' + team_full + '</span>'
+                + '</div>'
+            )
+
+        if flag_url:
+            flag_html_final = '<img src="' + flag_url + '" style="width:18px;height:13px;object-fit:cover;border-radius:2px;vertical-align:middle;" />'
+        else:
+            flag_html_final = ""
+
+        row_parts = [
+            '<div class="player-row">',
+            '<img src="' + photo_url + '" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid rgba(232,184,75,0.35);flex-shrink:0;background:#0a1520;" />',
+            '<div style="flex:1;min-width:0;overflow:hidden;">',
+            '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">',
+            '<span style="font-size:0.95rem;font-weight:800;color:#f0f4f8;white-space:nowrap;">' + str(row["name"]) + '</span>',
+            '<span style="background:' + pos_bg + ';color:' + pos_color + ';border:1px solid ' + pos_bdr + ';font-size:0.55rem;font-weight:900;letter-spacing:1.5px;padding:1px 6px;border-radius:3px;">' + pos + '</span>',
+            flag_html_final,
+            '<span style="font-size:0.65rem;color:#5a7080;white-space:nowrap;">' + nat_name + '</span>',
+            '</div>',
+            loan_html_final,
+            '</div>',
+            '<div style="text-align:right;flex-shrink:0;min-width:120px;">',
+            '<div style="font-size:0.88rem;font-weight:700;color:#e8b84b;">' + fmt_money(row["price"]) + '</div>',
+            '<div style="font-size:0.6rem;color:#5a7080;">Cl&aacute;us: ' + fmt_money(row["clausula"]) + '</div>',
+            '<div style="margin-top:3px;">' + contrato_html + '</div>',
+            '</div>',
+            '</div>',
+        ]
+        st.markdown("".join(row_parts), unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1174,47 +1201,58 @@ elif page == "🏟️ Equipos":
                         safe_n    = str(p["name"]).replace("'","").replace('"',"")
                         fallback  = f"https://ui-avatars.com/api/?name={'+'.join(safe_n.split()[:2])}&background=1a2a3a&color=f0c040&size=80&bold=true"
 
-                        # BUG FIX: Build flag/loan HTML with single quotes to avoid breaking outer f-string
-                        flag_img = f'<img src=\'{flag_url}\' style=\'width:16px;height:12px;border-radius:2px;object-fit:cover;vertical-align:middle;\' />' if flag_url else ""
-
-                        if pd.notna(p.get("cesion")):
-                            orig_logo = TEAM_LOGOS.get(p["cesion"], "")
-                            orig_logo_html = f'<img src=\'{orig_logo}\' style=\'width:14px;height:14px;object-fit:contain;border-radius:50%;vertical-align:middle;\' />' if orig_logo else ""
-                            loan_info = f'<div style=\'font-size:0.6rem;color:#f97316;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\'>{orig_logo_html} {p["cesion"]} &#8594; cedido</div>'
-                        else:
-                            loan_info = ""
-
                         pos_bg  = pos_color + "22"
                         pos_bdr = pos_color + "44"
 
-                        st.markdown(f"""
-                        <div class="player-card">
-                          <div class="player-card-header">
-                            <img src="{photo_url}" class="player-photo"
-                                 onerror="this.onerror=null;this.src='{fallback}'" />
-                            <div class="player-info">
-                              <div class="player-name" title="{p['name']}">{p['name']}</div>
-                              <div style="margin-top:2px;">
-                                <span class="player-pos-badge" style="background:{pos_bg};color:{pos_color};border:1px solid {pos_bdr};">{pos}</span>
-                              </div>
-                              <div class="player-nat">{flag_img} {nat_name}</div>
-                              {loan_info}
-                            </div>
-                          </div>
-                          <div class="player-stats-bar">
-                            <div class="player-stat">
-                              <div class="player-stat-val">{fmt_money(p["price"])}</div>
-                              <div class="player-stat-lbl">Valor</div>
-                            </div>
-                            <div class="player-stat">
-                              <div class="player-stat-val" style="font-size:0.72rem;">{p["contrato"][:9]}</div>
-                              <div class="player-stat-lbl">Contrato</div>
-                            </div>
-                          </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        # Build sub-HTML pieces using string concat (NO escaped quotes)
+                        if flag_url:
+                            flag_html_piece = '<img src="' + flag_url + '" style="width:16px;height:12px;border-radius:2px;object-fit:cover;vertical-align:middle;" />'
+                        else:
+                            flag_html_piece = ""
+
+                        if pd.notna(p.get("cesion")):
+                            orig_logo = TEAM_LOGOS.get(p["cesion"], "")
+                            if orig_logo:
+                                olo_html = '<img src="' + orig_logo + '" style="width:14px;height:14px;object-fit:contain;border-radius:50%;vertical-align:middle;" />'
+                            else:
+                                olo_html = ""
+                            loan_info_html = '<div style="font-size:0.6rem;color:#f97316;margin-top:2px;">' + olo_html + " " + str(p["cesion"]) + " &#8594; cedido</div>"
+                        else:
+                            loan_info_html = ""
+
+                        player_price = fmt_money(p["price"])
+                        contrato_short = p["contrato"][:9]
+                        player_name_safe = str(p["name"])
+
+                        card_html = (
+                            '<div class="player-card">'
+                            '<div class="player-card-header">'
+                            '<img src="' + photo_url + '" class="player-photo" onerror="this.onerror=null;this.src=&quot;' + fallback + '&quot;" />'
+                            '<div class="player-info">'
+                            '<div class="player-name">' + player_name_safe + '</div>'
+                            '<div style="margin-top:2px;">'
+                            '<span class="player-pos-badge" style="background:' + pos_bg + ';color:' + pos_color + ';border:1px solid ' + pos_bdr + ';">' + pos + '</span>'
+                            '</div>'
+                            '<div class="player-nat">' + flag_html_piece + " " + nat_name + '</div>'
+                            + loan_info_html +
+                            '</div>'
+                            '</div>'
+                            '<div class="player-stats-bar">'
+                            '<div class="player-stat">'
+                            '<div class="player-stat-val">' + player_price + '</div>'
+                            '<div class="player-stat-lbl">Valor</div>'
+                            '</div>'
+                            '<div class="player-stat">'
+                            '<div class="player-stat-val" style="font-size:0.72rem;">' + contrato_short + '</div>'
+                            '<div class="player-stat-lbl">Contrato</div>'
+                            '</div>'
+                            '</div>'
+                            '</div>'
+                        )
+                        st.markdown(card_html, unsafe_allow_html=True)
 
         st.markdown("---")
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
