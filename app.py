@@ -504,7 +504,7 @@ PLAYER_DATA = {
     "M. Salah":            {"pos": "FWD", "nat": "eg", "nat_name": "Egipto",         "sofifa": 209331},
     "K. Casteels":         {"pos": "GK",  "nat": "be", "nat_name": "Bélgica",        "sofifa": 192984},
     "J. Castrop":          {"pos": "MID", "nat": "de", "nat_name": "Alemania",       "sofifa": 264194},
-    "B. Brobbey":          {"pos": "FWD", "nat": "nl", "nat_name": "Países Bajos",   "sofifa": 258513},
+    "B. Brobbey":          {"pos": "FWD", "nat": "nl", "nat_name": "Países Bajos",   "sofifa": 251810},
     "M. Soulé":            {"pos": "MID", "nat": "ar", "nat_name": "Argentina",      "sofifa": 265695},
     "W. Zaïre-Emery":      {"pos": "MID", "nat": "fr", "nat_name": "Francia",        "sofifa": 270673},
     "A. Ramsdale":         {"pos": "GK",  "nat": "gb-eng","nat_name": "Inglaterra",  "sofifa": 233934},
