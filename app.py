@@ -510,6 +510,7 @@ PLAYER_DATA = {
     "A. Güler":            {"pos": "MID", "nat": "tr", "nat_name": "Turquía",        "sofifa": 264309},
     "M. Caicedo":          {"pos": "MID", "nat": "ec", "nat_name": "Ecuador",        "sofifa": 256079},
     "Newerton":            {"pos": "FWD", "nat": "br", "nat_name": "Brasil",         "sofifa": 277194},
+    "E. Ferguson":         {"pos": "FWD", "nat": "ie", "nat_name": "Irlanda",         "sofifa": 259608},
 }
 
 # ── TEAM DATA ─────────────────────────────────────────────────────────────────
