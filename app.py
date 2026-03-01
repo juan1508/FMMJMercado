@@ -938,8 +938,8 @@ if page == "⚽ Jugadores":
         contrato_html = contrato_badge(row["contrato"])
 
         pos_bg  = pos_color + "22"
-        st.markdown(f"""
         pos_bdr = pos_color + "44"
+        st.markdown(f"""
         <div class="player-row">
           <img src="{photo_url}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid rgba(232,184,75,0.35);flex-shrink:0;background:#0a1520;"
                onerror="this.onerror=null;this.src='{fallback}'">
@@ -1021,8 +1021,8 @@ elif page == "🏟️ Equipos":
                             loan_info = ""
 
                         pos_bg  = pos_color + "22"
-                        st.markdown(f"""
                         pos_bdr = pos_color + "44"
+                        st.markdown(f"""
                         <div class="player-card">
                           <div class="player-card-header">
                             <img src="{photo_url}" class="player-photo"
@@ -1170,8 +1170,8 @@ elif page == "🔄 Cedidos":
         accent_col  = "#f97316" if p["contrato"] == "Cesion Corta" else "#ef4444"
 
         pos_bg  = pos_color + "22"
-        st.markdown(f"""
         pos_bdr = pos_color + "44"
+        st.markdown(f"""
         <div style="background:linear-gradient(160deg,#0d1b2a,#0a1a28);border:1px solid rgba(255,255,255,0.07);
                     border-left:3px solid {accent_col};border-radius:12px;padding:14px 16px;margin-bottom:8px;
                     display:flex;align-items:center;gap:14px;">
