@@ -43,42 +43,82 @@ st.markdown("""
   }
   .page-sub { font-size: 0.75rem; color: #5a7080; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; }
 
-  /* Player card - FIXED overflow and text issues */
+  /* ── Player card ── completely rewritten to avoid Streamlit column overflow ── */
   .player-card {
     background: linear-gradient(160deg, #0d1b2a 0%, #0a1a28 60%, #071018 100%);
     border: 1px solid rgba(255,255,255,0.07);
     border-radius: 14px;
-    padding: 0;
     overflow: hidden;
     margin-bottom: 10px;
     transition: border-color 0.2s, transform 0.15s;
     position: relative;
+    width: 100%;
+    box-sizing: border-box;
   }
   .player-card:hover { border-color: rgba(232,184,75,0.4); transform: translateY(-2px); }
 
-  .player-card-header { padding: 14px 14px 10px 14px; display: flex; align-items: center; gap: 12px; }
-  .player-photo { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(232,184,75,0.4); flex-shrink: 0; background: #0a1520; }
-  .player-info { flex: 1; min-width: 0; overflow: hidden; }
-  /* FIXED: player name no longer overflows vertically */
-  .player-name { 
-    font-family: 'Barlow Condensed', sans-serif; 
-    font-size: 0.9rem; 
-    font-weight: 800; 
-    color: #f0f4f8; 
-    line-height: 1.2; 
-    margin-bottom: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: block;
-    max-width: 100%;
+  /* Use CSS Grid to avoid flex overflow issues inside Streamlit columns */
+  .player-card-header {
+    padding: 12px 12px 8px 12px;
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 10px;
+    align-items: start;
+    width: 100%;
+    box-sizing: border-box;
   }
-  .player-pos-badge { display: inline-block; font-size: 0.58rem; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; margin-right: 4px; }
-  .player-nat { display: flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 0.7rem; color: #7a9db0; }
-  .player-stats-bar { background: rgba(255,255,255,0.03); border-top: 1px solid rgba(255,255,255,0.05); padding: 8px 14px; display: flex; justify-content: space-around; }
+  .player-photo {
+    width: 56px; height: 56px;
+    border-radius: 50%; object-fit: cover;
+    border: 2px solid rgba(232,184,75,0.4);
+    background: #0a1520;
+    display: block;
+  }
+  .player-info {
+    overflow: hidden;
+    min-width: 0;
+    width: 100%;
+  }
+  .player-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: #f0f4f8;
+    line-height: 1.2;
+    margin-bottom: 3px;
+    /* Key fix: clip text that doesn't fit */
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .player-pos-badge {
+    display: inline-block;
+    font-size: 0.55rem; font-weight: 900; letter-spacing: 1.5px;
+    text-transform: uppercase; padding: 1px 5px; border-radius: 3px;
+    margin-right: 3px; vertical-align: middle;
+  }
+  .player-nat {
+    display: block;
+    margin-top: 3px; font-size: 0.68rem; color: #7a9db0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .player-stats-bar {
+    background: rgba(255,255,255,0.03);
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding: 7px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
   .player-stat { text-align: center; }
-  .player-stat-val { font-family: 'Barlow Condensed', sans-serif; font-size: 1.05rem; font-weight: 900; color: #e8b84b; line-height: 1; }
-  .player-stat-lbl { font-size: 0.55rem; color: #5a8090; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 2px; }
+  .player-stat-val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.95rem; font-weight: 900; color: #e8b84b; line-height: 1;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .player-stat-lbl { font-size: 0.5rem; color: #5a8090; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
 
   /* Loan badge */
   .loan-badge { position: absolute; top: 10px; right: 10px; padding: 2px 7px; border-radius: 10px; font-size: 0.6rem; font-weight: 900; letter-spacing: 0.5px; }
@@ -564,6 +604,73 @@ POS_COLORS = {"GK": "#f59e0b", "DEF": "#3b82f6", "MID": "#22c55e", "FWD": "#ef44
 CONTRATO_COLORS = {
     "1 Season": "#22c55e", "2 Season": "#3b82f6",
     "Cesion Corta": "#f97316", "Cesion Larga": "#ef4444"
+}
+
+# ── Presupuestos reales del Excel (hoja Teams, columna Presupuesto) ───────────
+TEAM_BUDGETS = {
+    "ATL":  28000000,
+    "ATX":  64000000,
+    "MTL":  70050000,
+    "CLT":  23850000,
+    "CHI":  56850000,
+    "CLB":  5500000,
+    "COL":  79500000,
+    "DCU":  25000000,
+    "CIN":  15000000,
+    "DAL":  96200000,
+    "HOU":  107250000,
+    "MIA":  52900000,
+    "LAFC": 717850000,
+    "LA":   71650000,
+    "MIN":  55000000,
+    "NHS":  112900000,
+    "NE":   77450000,
+    "NYC":  5500000,
+    "ORL":  25500000,
+    "PHI":  22200000,
+    "POR":  22000000,
+    "RSL":  22500000,
+    "RBNY": 5000000,
+    "SDFC": 24100000,
+    "SJ":   50000000,
+    "SEA":  32000000,
+    "SKC":  68000000,
+    "STL":  20500000,
+    "TOR":  8000000,
+    "VAN":  60750000,
+}
+
+TEAM_DT = {
+    "ATL":  "Sérgio Conceição",
+    "ATX":  "Pep Guardiola",
+    "MTL":  "Didier Deschamps",
+    "CLT":  "Nuno Espírito Santo",
+    "CHI":  "Thomas Tuchel",
+    "CLB":  "Arne Slot",
+    "COL":  "Unai Emery",
+    "DCU":  "Carlo Ancelotti",
+    "CIN":  "Antonio Conte",
+    "DAL":  "Julian Nagelsmann",
+    "HOU":  "Mike Tullberg",
+    "MIA":  "Marcelo Bielsa",
+    "LAFC": "José Mourinho",
+    "LA":   "Vincent Kompany",
+    "MIN":  "Hansi Flick",
+    "NHS":  "Lionel Scaloni",
+    "NE":   "Jürgen Klopp",
+    "NYC":  "Ruben Amorim",
+    "ORL":  "Mikel Arteta",
+    "PHI":  "Néstor Lorenzo",
+    "POR":  "Steven Gerrard",
+    "RSL":  "Enzo Maresca",
+    "RBNY": "Phil Parkinson",
+    "SDFC": "Luis de la Fuente",
+    "SJ":   "Gian Piero Gasperini",
+    "SEA":  "Xabi Alonso",
+    "SKC":  "Luis Enrique",
+    "STL":  "Simone Inzaghi",
+    "TOR":  "Ernesto Valverde",
+    "VAN":  "Diego Simeone",
 }
 
 
@@ -1087,12 +1194,16 @@ elif page == "🏟️ Equipos":
         with hc2:
             presi = TEAM_PRESIDENT.get(team_code, "?")
             presi_color = PRESIDENTS.get(presi, {}).get("color", "#aaa")
+            dt_name = TEAM_DT.get(team_code, "—")
+            budget  = TEAM_BUDGETS.get(team_code, 0)
             st.markdown(
                 f'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:1.5rem;font-weight:900;color:#f0f4f8;">'
                 f'{team_code} <span style="color:#7a9db0;font-size:1rem;font-weight:400;">— {TEAM_FULL_NAMES.get(team_code,"")}</span>'
                 f' <span style="font-size:0.75rem;color:{presi_color};background:{presi_color}22;border:1px solid {presi_color}44;padding:2px 8px;border-radius:4px;">{presi}</span></div>'
-                f'<div style="font-size:0.75rem;color:#5a7080;">'
-                f'{len(squad)} jugadores · Valor plantilla: <span style="color:#e8b84b;font-weight:700;">{fmt_money(total_val)}</span></div>',
+                f'<div style="font-size:0.75rem;color:#5a7080;margin-top:3px;">'
+                f'DT: <span style="color:#e2eaf4;">{dt_name}</span>'
+                f' &nbsp;·&nbsp; {len(squad)} jugadores'
+                f' &nbsp;·&nbsp; Presupuesto: <span style="color:#e8b84b;font-weight:700;">{fmt_money(budget)}</span></div>',
                 unsafe_allow_html=True
             )
 
@@ -1124,7 +1235,7 @@ elif page == "🏟️ Equipos":
 
                         pos_bg  = pos_color + "22"
                         pos_bdr = pos_color + "44"
-                        # FIXED: player name properly contained
+                        # FIXED card: CSS grid layout, name clipped correctly
                         st.markdown(f"""
                         <div class="player-card">
                           <div class="player-card-header">
@@ -1132,10 +1243,10 @@ elif page == "🏟️ Equipos":
                                  onerror="this.onerror=null;this.src='{fallback}'">
                             <div class="player-info">
                               <div class="player-name" title="{p['name']}">{p['name']}</div>
-                              <div>
+                              <div style="margin-top:2px;">
                                 <span class="player-pos-badge" style="background:{pos_bg};color:{pos_color};border:1px solid {pos_bdr};">{pos}</span>
                               </div>
-                              <div class="player-nat">{flag_img}<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{nat_name}</span></div>
+                              <div class="player-nat">{flag_img} {nat_name}</div>
                               {loan_info}
                             </div>
                           </div>
@@ -1145,7 +1256,7 @@ elif page == "🏟️ Equipos":
                               <div class="player-stat-lbl">Valor</div>
                             </div>
                             <div class="player-stat">
-                              <div class="player-stat-val" style="font-size:0.75rem;">{p["contrato"][:8]}</div>
+                              <div class="player-stat-val" style="font-size:0.72rem;">{p["contrato"][:9]}</div>
                               <div class="player-stat-lbl">Contrato</div>
                             </div>
                           </div>
@@ -1161,79 +1272,88 @@ elif page == "🏟️ Equipos":
 elif page == "💰 Presupuestos":
     players_df = get_current_players()
     st.markdown('<div class="page-title">PRESUPUESTOS</div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-sub">Valor de plantilla por equipo</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-sub">Presupuesto real de cada equipo · Fuente: hoja Teams del Excel</div>', unsafe_allow_html=True)
 
-    # Value by team — using actual "price" column (market value of players)
-    team_vals = (
-        players_df.groupby("team")["price"]
-        .sum()
-        .reset_index()
-        .rename(columns={"price": "valor_total"})
-        .sort_values("valor_total", ascending=False)
-    )
-    team_vals["full_name"] = team_vals["team"].map(TEAM_FULL_NAMES)
-    team_vals["presidente"] = team_vals["team"].map(TEAM_PRESIDENT)
+    # ── Build table using REAL BUDGETS from Excel ─────────────────────────────
+    budget_rows = []
+    for team_code, budget in TEAM_BUDGETS.items():
+        presi = TEAM_PRESIDENT.get(team_code, "?")
+        dt    = TEAM_DT.get(team_code, "—")
+        budget_rows.append({
+            "team":       team_code,
+            "full_name":  TEAM_FULL_NAMES.get(team_code, team_code),
+            "presidente": presi,
+            "dt":         dt,
+            "presupuesto": budget,
+        })
 
-    total_b = team_vals["valor_total"].sum()
-    avg_b   = team_vals["valor_total"].mean()
+    team_vals = (pd.DataFrame(budget_rows)
+                 .sort_values("presupuesto", ascending=False)
+                 .reset_index(drop=True))
+
+    total_b = team_vals["presupuesto"].sum()
+    avg_b   = team_vals["presupuesto"].mean()
+    top_row = team_vals.iloc[0]
+    bot_row = team_vals.iloc[-1]
 
     b1, b2, b3, b4 = st.columns(4)
-    b1.metric("Valor Total Liga",    fmt_money(total_b))
-    b2.metric("Promedio por equipo", fmt_money(avg_b))
-    b3.metric("Mayor plantilla",     f'{team_vals.iloc[0]["team"]} — {fmt_money(team_vals.iloc[0]["valor_total"])}')
-    b4.metric("Menor plantilla",     f'{team_vals.iloc[-1]["team"]} — {fmt_money(team_vals.iloc[-1]["valor_total"])}')
+    b1.metric("Presupuesto Total Liga", fmt_money(total_b))
+    b2.metric("Promedio por equipo",    fmt_money(avg_b))
+    b3.metric("Mayor presupuesto",      f'{top_row["team"]} — {fmt_money(top_row["presupuesto"])}')
+    b4.metric("Menor presupuesto",      f'{bot_row["team"]} — {fmt_money(bot_row["presupuesto"])}')
 
     st.divider()
 
     # ── BY PRESIDENT ─────────────────────────────────────────────────────────
-    st.markdown("#### 👑 Valor total por Presidente")
+    st.markdown("#### 👑 Presupuesto total por Presidente")
     pc1, pc2, pc3 = st.columns(3)
     for col, (presi, pdata) in zip([pc1, pc2, pc3], PRESIDENTS.items()):
-        presi_teams = pdata["teams"]
-        presi_val = team_vals[team_vals["team"].isin(presi_teams)]["valor_total"].sum()
+        presi_val = team_vals[team_vals["presidente"] == presi]["presupuesto"].sum()
+        num_teams = len(pdata["teams"])
         col.markdown(f"""
         <div style="background:linear-gradient(135deg,#0d1520,#111827);border:1px solid {pdata['color']}44;
                     border-top:3px solid {pdata['color']};border-radius:14px;padding:16px;text-align:center;">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:3px;color:{pdata['color']};">{presi}</div>
           <div style="font-family:'Space Mono',monospace;font-size:1.1rem;font-weight:700;color:#e8b84b;">{fmt_money(presi_val)}</div>
-          <div style="font-size:0.65rem;color:#5a7080;margin-top:4px;">{len(presi_teams)} equipos</div>
+          <div style="font-size:0.65rem;color:#5a7080;margin-top:4px;">{num_teams} equipos</div>
         </div>
         """, unsafe_allow_html=True)
 
     st.divider()
 
-    for i, (_, row) in enumerate(team_vals.iterrows()):
-        logo = TEAM_LOGOS.get(row["team"], "")
+    # ── RANKING ROWS ──────────────────────────────────────────────────────────
+    for i, row in team_vals.iterrows():
+        logo     = TEAM_LOGOS.get(row["team"], "")
         logo_html = f'<img src="{logo}" style="width:30px;height:30px;object-fit:contain;border-radius:50%;background:rgba(255,255,255,0.04);">' if logo else ""
-        pct = row["valor_total"] / team_vals["valor_total"].max()
-        bar_w = int(pct * 260)
+        pct      = row["presupuesto"] / team_vals["presupuesto"].max()
+        bar_w    = int(pct * 220)
         rank_color = "#e8b84b" if i < 3 else "#3b82f6" if i < 10 else "#5a7080"
-        presi_c = PRESIDENTS.get(row["presidente"], {}).get("color", "#aaa")
+        presi_c  = PRESIDENTS.get(row["presidente"], {}).get("color", "#aaa")
 
         st.markdown(f"""
-        <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.02);
+        <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.02);
                     border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:9px 14px;margin-bottom:5px;">
           <span style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:900;
-                       color:{rank_color};min-width:26px;">#{i+1}</span>
+                       color:{rank_color};min-width:28px;">#{i+1}</span>
           {logo_html}
-          <span style="font-weight:700;color:#dce8f0;min-width:50px;">{row["team"]}</span>
-          <span style="color:{presi_c};font-size:0.65rem;font-weight:700;background:{presi_c}18;padding:1px 6px;border-radius:4px;border:1px solid {presi_c}33;">{row["presidente"]}</span>
-          <span style="color:#5a7080;font-size:0.75rem;flex:1;">{row["full_name"]}</span>
-          <div style="width:260px;background:rgba(255,255,255,0.05);border-radius:4px;height:6px;margin-right:12px;">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#dce8f0;min-width:52px;font-size:0.9rem;">{row["team"]}</span>
+          <span style="color:{presi_c};font-size:0.62rem;font-weight:700;background:{presi_c}18;padding:1px 6px;border-radius:4px;border:1px solid {presi_c}33;flex-shrink:0;">{row["presidente"]}</span>
+          <span style="color:#5a7080;font-size:0.72rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{row["full_name"]} <span style="color:#3a5060;">· {row["dt"]}</span></span>
+          <div style="width:220px;background:rgba(255,255,255,0.05);border-radius:4px;height:6px;margin-right:10px;flex-shrink:0;">
             <div style="width:{bar_w}px;background:linear-gradient(90deg,#e8b84b,#f0c040);border-radius:4px;height:6px;"></div>
           </div>
-          <span style="font-family:'Space Mono',monospace;font-size:0.85rem;font-weight:700;color:#e8b84b;min-width:80px;text-align:right;">{fmt_money(row["valor_total"])}</span>
+          <span style="font-family:'Space Mono',monospace;font-size:0.85rem;font-weight:700;color:#e8b84b;min-width:85px;text-align:right;">{fmt_money(row["presupuesto"])}</span>
         </div>
         """, unsafe_allow_html=True)
 
     st.divider()
     fig = px.bar(
-        team_vals, x="valor_total", y="team", orientation="h",
-        title="Valor de plantilla por equipo (suma de valores de mercado de jugadores)",
-        labels={"valor_total": "Valor ($)", "team": "Equipo"},
-        color="valor_total",
+        team_vals, x="presupuesto", y="team", orientation="h",
+        title="Presupuesto disponible por equipo (datos del Excel · hoja Teams)",
+        labels={"presupuesto": "Presupuesto ($)", "team": "Equipo"},
+        color="presupuesto",
         color_continuous_scale=["#1a3a5c", "#e8b84b"],
-        text=team_vals["valor_total"].apply(fmt_money),
+        text=team_vals["presupuesto"].apply(fmt_money),
     )
     fig.update_layout(
         plot_bgcolor="#0d1520", paper_bgcolor="#060a0f",
