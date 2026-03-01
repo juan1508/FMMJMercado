@@ -546,7 +546,7 @@ PLAYER_DATA = {
     "M. Del Blanco":       {"pos": "DEF", "nat": "ar", "nat_name": "Argentina",      "sofifa": 273028},
     "Y. Bonny":            {"pos": "FWD", "nat": "fr", "nat_name": "Francia",        "sofifa": 259565},
     "Alex Remiro":         {"pos": "GK",  "nat": "es", "nat_name": "España",         "sofifa": 227127},
-    "D. Silva":            {"pos": "MID", "nat": "es", "nat_name": "España",         "sofifa": 0},
+    "D. Silva":            {"pos": "MID", "nat": "co", "nat_name": "Colombia",       "sofifa": 000000},
     "D. Rice":             {"pos": "MID", "nat": "gb-eng","nat_name": "Inglaterra",  "sofifa": 234378},
     "R. Kolo Muani":       {"pos": "FWD", "nat": "fr", "nat_name": "Francia",        "sofifa": 237679},
     "F. Wirtz":            {"pos": "MID", "nat": "de", "nat_name": "Alemania",       "sofifa": 256630},
