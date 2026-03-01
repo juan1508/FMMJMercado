@@ -2,6 +2,10 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import json
+import os
+from datetime import datetime, timedelta
+import io
 
 st.set_page_config(
     page_title="MMJ League — Mercado",
@@ -39,7 +43,7 @@ st.markdown("""
   }
   .page-sub { font-size: 0.75rem; color: #5a7080; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; }
 
-  /* Player card */
+  /* Player card - FIXED overflow and text issues */
   .player-card {
     background: linear-gradient(160deg, #0d1b2a 0%, #0a1a28 60%, #071018 100%);
     border: 1px solid rgba(255,255,255,0.07);
@@ -54,8 +58,21 @@ st.markdown("""
 
   .player-card-header { padding: 14px 14px 10px 14px; display: flex; align-items: center; gap: 12px; }
   .player-photo { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(232,184,75,0.4); flex-shrink: 0; background: #0a1520; }
-  .player-info { flex: 1; min-width: 0; }
-  .player-name { font-family: 'Barlow Condensed', sans-serif; font-size: 1rem; font-weight: 800; color: #f0f4f8; line-height: 1.1; margin-bottom: 2px; }
+  .player-info { flex: 1; min-width: 0; overflow: hidden; }
+  /* FIXED: player name no longer overflows vertically */
+  .player-name { 
+    font-family: 'Barlow Condensed', sans-serif; 
+    font-size: 0.9rem; 
+    font-weight: 800; 
+    color: #f0f4f8; 
+    line-height: 1.2; 
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    max-width: 100%;
+  }
   .player-pos-badge { display: inline-block; font-size: 0.58rem; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; margin-right: 4px; }
   .player-nat { display: flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 0.7rem; color: #7a9db0; }
   .player-stats-bar { background: rgba(255,255,255,0.03); border-top: 1px solid rgba(255,255,255,0.05); padding: 8px 14px; display: flex; justify-content: space-around; }
@@ -68,20 +85,14 @@ st.markdown("""
   .loan-corta { background: rgba(249,115,22,0.18); border: 1px solid rgba(249,115,22,0.4); color: #f97316; }
   .loan-larga { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
 
-  /* Team shield in card */
-  .team-shield { width: 26px; height: 26px; object-fit: contain; border-radius: 50%; background: rgba(255,255,255,0.04); flex-shrink: 0; }
-
-  /* Price tag */
   .price-gold { color: #e8b84b; font-family: 'Space Mono', monospace; font-weight: 700; }
   .price-green { color: #22c55e; font-family: 'Space Mono', monospace; }
 
-  /* Sidebar */
   [data-testid="stSidebar"] { background: #0d1520 !important; border-right: 1px solid rgba(255,255,255,0.07); }
   [data-testid="stSidebar"] * { color: #e2eaf4 !important; }
 
   hr { border-color: rgba(255,255,255,0.07) !important; }
 
-  /* Table rows */
   .player-row {
     display: flex; align-items: center; gap: 10px;
     background: rgba(255,255,255,0.02);
@@ -91,30 +102,87 @@ st.markdown("""
   }
   .player-row:hover { border-color: rgba(232,184,75,0.25); }
 
-  /* Cedido arrow */
-  .cedido-arrow { color: #f97316; font-size: 0.75rem; font-weight: 700; }
-
-  /* Contract badges */
   .badge-1s { background: rgba(34,197,94,0.12); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); padding: 2px 8px; border-radius: 4px; font-size: 0.62rem; font-weight: 700; }
   .badge-2s { background: rgba(59,130,246,0.12); color: #3b82f6; border: 1px solid rgba(59,130,246,0.25); padding: 2px 8px; border-radius: 4px; font-size: 0.62rem; font-weight: 700; }
   .badge-cc { background: rgba(249,115,22,0.15); color: #f97316; border: 1px solid rgba(249,115,22,0.35); padding: 2px 8px; border-radius: 4px; font-size: 0.62rem; font-weight: 700; }
   .badge-cl { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); padding: 2px 8px; border-radius: 4px; font-size: 0.62rem; font-weight: 700; }
 
-  /* Equipo card */
-  .equipo-card {
-    background: #0d1520;
-    border: 1px solid rgba(255,255,255,0.07);
+  /* Transfer window styles */
+  .transfer-card {
+    background: linear-gradient(160deg, #0d1b2a, #0a1520);
+    border: 1px solid rgba(255,255,255,0.08);
     border-radius: 14px;
-    padding: 16px 20px;
-    margin-bottom: 12px;
-    border-left: 3px solid #e8b84b;
+    padding: 16px;
+    margin-bottom: 10px;
+    transition: all 0.2s;
+  }
+  .transfer-card:hover { border-color: rgba(232,184,75,0.3); }
+
+  .presi-jnka { color: #e8b84b; }
+  .presi-mati { color: #3b82f6; }
+  .presi-maxi { color: #a78bfa; }
+
+  .offer-pending { border-left: 3px solid #f59e0b; }
+  .offer-accepted { border-left: 3px solid #22c55e; }
+  .offer-rejected { border-left: 3px solid #ef4444; }
+
+  /* Timer styles */
+  .timer-container {
+    background: linear-gradient(135deg, #0d1520, #111827);
+    border: 2px solid #e8b84b;
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .timer-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 3px;
+    color: #5a7080;
+    margin-bottom: 8px;
+  }
+  .timer-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #e8b84b;
+    letter-spacing: 2px;
+  }
+  .timer-expired {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    color: #ef4444;
+    letter-spacing: 4px;
   }
 </style>
 """, unsafe_allow_html=True)
 
 
-# ── Helpers de imágenes ──────────────────────────────────────────────────────
+# ── STORAGE FILE ─────────────────────────────────────────────────────────────
+STORAGE_FILE = "mmj_data.json"
 
+def load_storage():
+    if os.path.exists(STORAGE_FILE):
+        with open(STORAGE_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def save_storage(data):
+    with open(STORAGE_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2, default=str)
+
+def get_state(key, default=None):
+    data = load_storage()
+    return data.get(key, default)
+
+def set_state(key, value):
+    data = load_storage()
+    data[key] = value
+    save_storage(data)
+
+
+# ── Helpers de imágenes ──────────────────────────────────────────────────────
 def get_flag_url(code):
     if not code:
         return ""
@@ -131,8 +199,7 @@ def get_player_photo(player_name, sofifa_id):
     return f"https://ui-avatars.com/api/?name={initials}&background=1a2a3a&color=f0c040&size=128&bold=true"
 
 
-# ── PLAYER_DATA del league manager (solo jugadores en la app) ────────────────
-# sofifa IDs + pos + nacionalidad para fotos y banderas
+# ── PLAYER_DATA ───────────────────────────────────────────────────────────────
 PLAYER_DATA = {
     "U. Simón":            {"pos": "GK",  "nat": "es", "nat_name": "España",        "sofifa": 230869},
     "J. Musiala":          {"pos": "MID", "nat": "de", "nat_name": "Alemania",       "sofifa": 256790},
@@ -233,7 +300,7 @@ PLAYER_DATA = {
     "A. Rabiot":           {"pos": "MID", "nat": "fr", "nat_name": "Francia",        "sofifa": 210008},
     "M. Depay":            {"pos": "FWD", "nat": "nl", "nat_name": "Países Bajos",   "sofifa": 202556},
     "J. Koundé":           {"pos": "DEF", "nat": "fr", "nat_name": "Francia",        "sofifa": 241486},
-    "A. Balde":            {"pos": "DEF", "nat": "es", "nat_name": "España",         "sofifa": 263578},
+    "A. Balde":            {"pos": "DEF", "nat": "es", "nat_name": "España",         "sofifa": 253578},
     "A. Ezzalzouli":       {"pos": "FWD", "nat": "ma", "nat_name": "Marruecos",      "sofifa": 264432},
     "D. Moreira":          {"pos": "MID", "nat": "pt", "nat_name": "Portugal",       "sofifa": 270039},
     "L. Miley":            {"pos": "MID", "nat": "gb-eng","nat_name": "Inglaterra",  "sofifa": 274246},
@@ -404,9 +471,34 @@ PLAYER_DATA = {
     "M. Caicedo":          {"pos": "MID", "nat": "ec", "nat_name": "Ecuador",        "sofifa": 256079},
     "Newerton":            {"pos": "FWD", "nat": "br", "nat_name": "Brasil",         "sofifa": 277194},
     "E. Ferguson":         {"pos": "FWD", "nat": "ie", "nat_name": "Irlanda",        "sofifa": 259608},
+    "A. Bastoni":          {"pos": "DEF", "nat": "it", "nat_name": "Italia",         "sofifa": 239685},
+    "A. Isak":             {"pos": "FWD", "nat": "se", "nat_name": "Suecia",         "sofifa": 232079},
+    "A. Mac Allister":     {"pos": "MID", "nat": "ar", "nat_name": "Argentina",      "sofifa": 246801},
+    "H. Çalhanoğlu":       {"pos": "MID", "nat": "tr", "nat_name": "Turquía",        "sofifa": 213348},
+    "D. Carvajal":         {"pos": "DEF", "nat": "es", "nat_name": "España",         "sofifa": 211361},
+    "Bremer":              {"pos": "DEF", "nat": "br", "nat_name": "Brasil",         "sofifa": 230678},
+    "David Raya":          {"pos": "GK",  "nat": "es", "nat_name": "España",         "sofifa": 218945},
+    "Mikel Merino":        {"pos": "MID", "nat": "es", "nat_name": "España",         "sofifa": 228906},
+    "Palhinha":            {"pos": "MID", "nat": "pt", "nat_name": "Portugal",       "sofifa": 222006},
+    "A. Tchouaméni":       {"pos": "MID", "nat": "fr", "nat_name": "Francia",        "sofifa": 246165},
+    "J. Stones":           {"pos": "DEF", "nat": "gb-eng","nat_name": "Inglaterra",  "sofifa": 199202},
+    "B. Verbruggen":       {"pos": "GK",  "nat": "nl", "nat_name": "Países Bajos",   "sofifa": 252520},
+    "De Gea":              {"pos": "GK",  "nat": "es", "nat_name": "España",         "sofifa": 193080},
+    "P. Gonçalves":        {"pos": "MID", "nat": "pt", "nat_name": "Portugal",       "sofifa": 235596},
+    "D. Olmo":             {"pos": "MID", "nat": "es", "nat_name": "España",         "sofifa": 236096},
+    "Bruno Guimarães":     {"pos": "MID", "nat": "br", "nat_name": "Brasil",         "sofifa": 236580},
+    "G. Di Lorenzo":       {"pos": "DEF", "nat": "it", "nat_name": "Italia",         "sofifa": 218627},
+    "D. Berardi":          {"pos": "FWD", "nat": "it", "nat_name": "Italia",         "sofifa": 190043},
+    "L. Hernández":        {"pos": "DEF", "nat": "fr", "nat_name": "Francia",        "sofifa": 212190},
+    "I. Provedel":         {"pos": "GK",  "nat": "it", "nat_name": "Italia",         "sofifa": 213527},
+    "G. Vicario":          {"pos": "GK",  "nat": "it", "nat_name": "Italia",         "sofifa": 215583},
+    "D. Livaković":        {"pos": "GK",  "nat": "hr", "nat_name": "Croacia",        "sofifa": 232080},
+    "A. Lookman":          {"pos": "FWD", "nat": "ng", "nat_name": "Nigeria",        "sofifa": 238519},
+    "I. Bennacer":         {"pos": "MID", "nat": "dz", "nat_name": "Argelia",        "sofifa": 223741},
+    "A. Bastoni":          {"pos": "DEF", "nat": "it", "nat_name": "Italia",         "sofifa": 239685},
 }
 
-# ── TEAM LOGOS ───────────────────────────────────────────────────────────────
+# ── TEAM DATA ─────────────────────────────────────────────────────────────────
 TEAM_LOGOS = {
     "LAFC": "https://a.espncdn.com/guid/090bf04b-bafb-ac27-0cc5-3fee8a7375ca/logos/primary_logo_on_black_color.png",
     "SEA":  "https://a.espncdn.com/guid/c847331a-0291-a79c-5b8e-22416f8fe26a/logos/primary_logo_on_black_color.png",
@@ -455,34 +547,38 @@ TEAM_FULL_NAMES = {
     "SJ":   "San Jose Earthquakes",
 }
 
-POS_COLORS = {"GK": "#f59e0b", "DEF": "#3b82f6", "MID": "#22c55e", "FWD": "#ef4444"}
+# President → teams mapping
+PRESIDENTS = {
+    "JNKA": {"color": "#e8b84b", "teams": ["LAFC", "ATL", "NHS", "SEA", "MIA", "COL", "NE", "SDFC"]},
+    "MATI": {"color": "#3b82f6", "teams": ["MIN", "VAN", "CLB", "ATX", "CHI", "ORL", "LA", "SKC", "CLT"]},
+    "MAXI": {"color": "#a78bfa", "teams": ["NYC", "RSL", "TOR", "MTL", "DAL", "POR", "HOU", "STL", "PHI", "DCU", "RBNY", "CIN", "SJ"]},
+}
 
+# Build reverse mapping: team → president
+TEAM_PRESIDENT = {}
+for presi, data in PRESIDENTS.items():
+    for team in data["teams"]:
+        TEAM_PRESIDENT[team] = presi
+
+POS_COLORS = {"GK": "#f59e0b", "DEF": "#3b82f6", "MID": "#22c55e", "FWD": "#ef4444"}
 CONTRATO_COLORS = {
     "1 Season": "#22c55e", "2 Season": "#3b82f6",
     "Cesion Corta": "#f97316", "Cesion Larga": "#ef4444"
 }
 
-PRESI_COLORS = {"JNKA": "#e8b84b", "MATI": "#3b82f6", "MAXI": "#a78bfa"}
 
-
-# ── Full player data (market data + league data merged) ──────────────────────
+# ── Full player data ──────────────────────────────────────────────────────────
 @st.cache_data
 def load_full_data():
-    # All players from the market app — only those that exist in PLAYER_DATA
     raw = [
-        # team = current team (where they play, including loan destination)
-        # cesion = original team (only for loaned players, from Excel)
-        # For loaned players: team=destination, cesion=original_owner
         {"name":"M. Salah",       "team":"ATL",  "price":104000000,"renovation":52000000, "clausula":468000000, "contrato":"1 Season",     "cesion":None},
         {"name":"Rodri",          "team":"TOR",  "price":115500000,"renovation":57750000, "clausula":519750000, "contrato":"1 Season",     "cesion":None},
-        # Mbappé: juega en LAFC (cedido), su equipo original/dueño es NSH
         {"name":"K. Mbappé",      "team":"LAFC", "price":211000000,"renovation":105500000,"clausula":949500000, "contrato":"Cesion Corta", "cesion":"NSH"},
         {"name":"Vini Jr.",       "team":"ATX",  "price":193500000,"renovation":96750000, "clausula":870750000, "contrato":"1 Season",     "cesion":None},
         {"name":"E. Haaland",     "team":"SEA",  "price":196000000,"renovation":98000000, "clausula":882000000, "contrato":"1 Season",     "cesion":None},
         {"name":"H. Kane",        "team":"COL",  "price":117500000,"renovation":58750000, "clausula":528750000, "contrato":"1 Season",     "cesion":None},
         {"name":"J. Bellingham",  "team":"NYC",  "price":174500000,"renovation":87250000, "clausula":785250000, "contrato":"1 Season",     "cesion":None},
         {"name":"V. van Dijk",    "team":"LA",   "price":77500000, "renovation":38750000, "clausula":348750000, "contrato":"1 Season",     "cesion":None},
-        # Lewandowski: juega en MIA (cedido largo), dueño MTL
         {"name":"R. Lewandowski", "team":"MIA",  "price":44000000, "renovation":22000000, "clausula":198000000, "contrato":"Cesion Larga", "cesion":"MTL"},
         {"name":"K. De Bruyne",   "team":"ATL",  "price":97000000, "renovation":48500000, "clausula":436500000, "contrato":"1 Season",     "cesion":None},
         {"name":"F. Wirtz",       "team":"SJ",   "price":145500000,"renovation":72750000, "clausula":654750000, "contrato":"1 Season",     "cesion":None},
@@ -514,17 +610,14 @@ def load_full_data():
         {"name":"A. Bastoni",     "team":"MIA",  "price":88500000, "renovation":44250000, "clausula":398250000, "contrato":"1 Season",     "cesion":None},
         {"name":"M. Maignan",     "team":"NHS",  "price":74000000, "renovation":37000000, "clausula":333000000, "contrato":"1 Season",     "cesion":None},
         {"name":"G. Donnarumma",  "team":"TOR",  "price":76000000, "renovation":38000000, "clausula":342000000, "contrato":"1 Season",     "cesion":None},
-        # Sommer: juega en ORL (cedido largo), dueño ATL
         {"name":"Y. Sommer",      "team":"ORL",  "price":9000000,  "renovation":4500000,  "clausula":40500000,  "contrato":"Cesion Larga", "cesion":"ATL"},
         {"name":"Rodrygo",        "team":"LAFC", "price":232000000,"renovation":116000000,"clausula":1044000000,"contrato":"1 Season",     "cesion":None},
         {"name":"H. Son",         "team":"ATX",  "price":56500000, "renovation":28250000, "clausula":254250000, "contrato":"1 Season",     "cesion":None},
         {"name":"K. Benzema",     "team":"NE",   "price":26000000, "renovation":13000000, "clausula":117000000, "contrato":"1 Season",     "cesion":None},
         {"name":"J. Álvarez",     "team":"SDFC", "price":94000000, "renovation":47000000, "clausula":423000000, "contrato":"2 Season",     "cesion":None},
-        {"name":"E. Haaland",     "team":"SEA",  "price":196000000,"renovation":98000000, "clausula":882000000, "contrato":"1 Season",     "cesion":None},
         {"name":"A. Isak",        "team":"SEA",  "price":89500000, "renovation":44750000, "clausula":402750000, "contrato":"1 Season",     "cesion":None},
         {"name":"P. Dybala",      "team":"LAFC", "price":81000000, "renovation":40500000, "clausula":364500000, "contrato":"1 Season",     "cesion":None},
         {"name":"Bruno Fernandes","team":"MTL",  "price":69000000, "renovation":34500000, "clausula":310500000, "contrato":"1 Season",     "cesion":None},
-        # Foden: juega en NE (cedido largo), dueño PHI
         {"name":"P. Foden",       "team":"NE",   "price":88000000, "renovation":44000000, "clausula":396000000, "contrato":"Cesion Larga", "cesion":"PHI"},
         {"name":"F. de Jong",     "team":"SKC",  "price":77500000, "renovation":38750000, "clausula":348750000, "contrato":"1 Season",     "cesion":None},
         {"name":"G. Xhaka",       "team":"CIN",  "price":47500000, "renovation":23750000, "clausula":213750000, "contrato":"1 Season",     "cesion":None},
@@ -534,7 +627,6 @@ def load_full_data():
         {"name":"T. Alexander-Arnold","team":"SKC","price":74000000,"renovation":37000000,"clausula":333000000, "contrato":"1 Season",     "cesion":None},
         {"name":"T. Hernández",   "team":"ATL",  "price":73000000, "renovation":36500000, "clausula":328500000, "contrato":"1 Season",     "cesion":None},
         {"name":"J. Koundé",      "team":"ORL",  "price":83000000, "renovation":41500000, "clausula":373500000, "contrato":"1 Season",     "cesion":None},
-        # Hakimi: juega en ORL (cedido corto), dueño DCU
         {"name":"A. Hakimi",      "team":"ORL",  "price":78500000, "renovation":39250000, "clausula":353250000, "contrato":"Cesion Corta", "cesion":"DCU"},
         {"name":"D. Carvajal",    "team":"LA",   "price":47000000, "renovation":23500000, "clausula":211500000, "contrato":"1 Season",     "cesion":None},
         {"name":"Bremer",         "team":"POR",  "price":72500000, "renovation":36250000, "clausula":326250000, "contrato":"1 Season",     "cesion":None},
@@ -544,7 +636,6 @@ def load_full_data():
         {"name":"David Raya",     "team":"HOU",  "price":54000000, "renovation":27000000, "clausula":243000000, "contrato":"1 Season",     "cesion":None},
         {"name":"L. Díaz",        "team":"NHS",  "price":118500000,"renovation":59250000, "clausula":533250000, "contrato":"1 Season",     "cesion":None},
         {"name":"R. Mahrez",      "team":"VAN",  "price":33500000, "renovation":16750000, "clausula":150750000, "contrato":"1 Season",     "cesion":None},
-        # Kvaratskhelia: juega en CLT (cedido largo), dueño CHI
         {"name":"K. Kvaratskhelia","team":"CLT", "price":81000000, "renovation":40500000, "clausula":364500000, "contrato":"Cesion Larga", "cesion":"CHI"},
         {"name":"Rafael Leão",    "team":"LA",   "price":86000000, "renovation":43000000, "clausula":387000000, "contrato":"1 Season",     "cesion":None},
         {"name":"Cristiano Ronaldo","team":"RBNY","price":18500000,"renovation":9250000,  "clausula":83250000,  "contrato":"1 Season",     "cesion":None},
@@ -568,13 +659,10 @@ def load_full_data():
         {"name":"G. Mamardashvili","team":"MIN", "price":57500000, "renovation":28750000, "clausula":258750000, "contrato":"1 Season",     "cesion":None},
         {"name":"De Gea",         "team":"TOR",  "price":17500000, "renovation":8750000,  "clausula":78750000,  "contrato":"1 Season",     "cesion":None},
         {"name":"C. Gakpo",       "team":"PHI",  "price":103000000,"renovation":51500000, "clausula":463500000, "contrato":"1 Season",     "cesion":None},
-        # Sané: juega en STL (cedido corto), dueño CLB
         {"name":"L. Sané",        "team":"STL",  "price":80000000, "renovation":40000000, "clausula":360000000, "contrato":"Cesion Corta", "cesion":"CLB"},
         {"name":"S. Mané",        "team":"DAL",  "price":45500000, "renovation":22750000, "clausula":204750000, "contrato":"1 Season",     "cesion":None},
-        # Coman: juega en CHI (cedido largo), dueño LA
         {"name":"K. Coman",       "team":"CHI",  "price":69000000, "renovation":34500000, "clausula":310500000, "contrato":"Cesion Larga", "cesion":"LA"},
         {"name":"Diogo Jota",     "team":"RSL",  "price":50000000, "renovation":25000000, "clausula":225000000, "contrato":"1 Season",     "cesion":None},
-        {"name":"M. Olise",       "team":"COL",  "price":43000000, "renovation":21500000, "clausula":193500000, "contrato":"1 Season",     "cesion":None},
         {"name":"A. Lookman",     "team":"ATL",  "price":50500000, "renovation":25250000, "clausula":227250000, "contrato":"1 Season",     "cesion":None},
         {"name":"J. Maddison",    "team":"MIN",  "price":70000000, "renovation":35000000, "clausula":315000000, "contrato":"1 Season",     "cesion":None},
         {"name":"İ. Gündoğan",    "team":"CHI",  "price":44000000, "renovation":22000000, "clausula":198000000, "contrato":"1 Season",     "cesion":None},
@@ -586,12 +674,10 @@ def load_full_data():
         {"name":"D. Alaba",       "team":"MTL",  "price":36000000, "renovation":18000000, "clausula":162000000, "contrato":"1 Season",     "cesion":None},
         {"name":"J. Frimpong",    "team":"LA",   "price":57000000, "renovation":28500000, "clausula":256500000, "contrato":"1 Season",     "cesion":None},
         {"name":"Sergio Ramos",   "team":"STL",  "price":2000000,  "renovation":1000000,  "clausula":9000000,   "contrato":"1 Season",     "cesion":None},
-        # Hummels: juega en ATX (cedido largo), dueño STL
         {"name":"M. Hummels",     "team":"ATX",  "price":69000000, "renovation":34500000, "clausula":310500000, "contrato":"Cesion Larga", "cesion":"STL"},
         {"name":"A. Davies",      "team":"NHS",  "price":74000000, "renovation":37000000, "clausula":333000000, "contrato":"1 Season",     "cesion":None},
         {"name":"J. Stones",      "team":"SKC",  "price":34500000, "renovation":17250000, "clausula":155250000, "contrato":"1 Season",     "cesion":None},
         {"name":"Alex Remiro",    "team":"SJ",   "price":32500000, "renovation":16250000, "clausula":146250000, "contrato":"1 Season",     "cesion":None},
-        # Neuer: juega en ATX (cedido largo), dueño CLB
         {"name":"M. Neuer",       "team":"ATX",  "price":7000000,  "renovation":3500000,  "clausula":31500000,  "contrato":"Cesion Larga", "cesion":"CLB"},
         {"name":"Diogo Costa",    "team":"RBNY", "price":54000000, "renovation":27000000, "clausula":243000000, "contrato":"1 Season",     "cesion":None},
         {"name":"P. Gulácsi",     "team":"ORL",  "price":7000000,  "renovation":3500000,  "clausula":31500000,  "contrato":"1 Season",     "cesion":None},
@@ -622,19 +708,14 @@ def load_full_data():
         {"name":"G. Martinelli",  "team":"HOU",  "price":64000000, "renovation":32000000, "clausula":288000000, "contrato":"1 Season",     "cesion":None},
         {"name":"M. Depay",       "team":"ORL",  "price":22500000, "renovation":11250000, "clausula":101250000, "contrato":"1 Season",     "cesion":None},
         {"name":"S. Gnabry",      "team":"SDFC", "price":46000000, "renovation":23000000, "clausula":207000000, "contrato":"1 Season",     "cesion":None},
-        # Rashford: juega en SKC (cedido largo), dueño DCU
         {"name":"M. Rashford",    "team":"SKC",  "price":76000000, "renovation":38000000, "clausula":342000000, "contrato":"Cesion Larga", "cesion":"DCU"},
         {"name":"A. Correa",      "team":"DCU",  "price":31000000, "renovation":15500000, "clausula":139500000, "contrato":"1 Season",     "cesion":None},
         {"name":"R. Sterling",    "team":"CHI",  "price":53000000, "renovation":26500000, "clausula":238500000, "contrato":"1 Season",     "cesion":None},
         {"name":"Gabriel Jesús",  "team":"CIN",  "price":78000000, "renovation":39000000, "clausula":351000000, "contrato":"1 Season",     "cesion":None},
         {"name":"K. Havertz",     "team":"HOU",  "price":53000000, "renovation":26500000, "clausula":238500000, "contrato":"1 Season",     "cesion":None},
         {"name":"Sávio",          "team":"DCU",  "price":47500000, "renovation":23750000, "clausula":213750000, "contrato":"1 Season",     "cesion":None},
-        {"name":"F. Wirtz",       "team":"SJ",   "price":145500000,"renovation":72750000, "clausula":654750000, "contrato":"1 Season",     "cesion":None},
-        {"name":"F. de Jong",     "team":"SKC",  "price":77500000, "renovation":38750000, "clausula":348750000, "contrato":"1 Season",     "cesion":None},
-        {"name":"J. Maddison",    "team":"MIN",  "price":70000000, "renovation":35000000, "clausula":315000000, "contrato":"1 Season",     "cesion":None},
         {"name":"F. Kessié",      "team":"MIN",  "price":20000000, "renovation":10000000, "clausula":90000000,  "contrato":"1 Season",     "cesion":None},
         {"name":"L. Paqueta",     "team":"DCU",  "price":65000000, "renovation":32500000, "clausula":292500000, "contrato":"1 Season",     "cesion":None},
-        # Brahim: juega en COL (cedido largo), dueño DAL
         {"name":"Brahim",         "team":"COL",  "price":43500000, "renovation":21750000, "clausula":195750000, "contrato":"Cesion Larga", "cesion":"DAL"},
         {"name":"D. Szoboszlai",  "team":"SDFC", "price":75000000, "renovation":37500000, "clausula":337500000, "contrato":"1 Season",     "cesion":None},
         {"name":"I. Bennacer",    "team":"ATL",  "price":36000000, "renovation":18000000, "clausula":162000000, "contrato":"1 Season",     "cesion":None},
@@ -650,7 +731,6 @@ def load_full_data():
         {"name":"A. Meret",       "team":"RSL",  "price":28000000, "renovation":14000000, "clausula":126000000, "contrato":"1 Season",     "cesion":None},
         {"name":"R. Kolo Muani",  "team":"SJ",   "price":70000000, "renovation":35000000, "clausula":315000000, "contrato":"1 Season",     "cesion":None},
         {"name":"S. Haller",      "team":"CIN",  "price":18000000, "renovation":9000000,  "clausula":81000000,  "contrato":"1 Season",     "cesion":None},
-        # Grealish: juega en DAL (cedido largo), dueño TOR
         {"name":"J. Grealish",    "team":"DAL",  "price":57500000, "renovation":28750000, "clausula":258750000, "contrato":"Cesion Larga", "cesion":"TOR"},
         {"name":"D. Udogie",      "team":"TOR",  "price":35500000, "renovation":17750000, "clausula":159750000, "contrato":"1 Season",     "cesion":None},
         {"name":"N. Süle",        "team":"RSL",  "price":24500000, "renovation":12250000, "clausula":110250000, "contrato":"1 Season",     "cesion":None},
@@ -667,7 +747,6 @@ def load_full_data():
         {"name":"Pau Cubarsí",    "team":"NHS",  "price":40500000, "renovation":20250000, "clausula":182250000, "contrato":"1 Season",     "cesion":None},
         {"name":"Gonçalo Inácio", "team":"RSL",  "price":40000000, "renovation":20000000, "clausula":180000000, "contrato":"1 Season",     "cesion":None},
         {"name":"C. Lukeba",      "team":"COL",  "price":40000000, "renovation":20000000, "clausula":180000000, "contrato":"1 Season",     "cesion":None},
-        # Rulli: juega en CLB (cedido largo), dueño ATX
         {"name":"G. Rulli",       "team":"CLB",  "price":10000000, "renovation":5000000,  "clausula":45000000,  "contrato":"Cesion Larga", "cesion":"ATX"},
         {"name":"É. Mendy",       "team":"DCU",  "price":12000000, "renovation":6000000,  "clausula":54000000,  "contrato":"1 Season",     "cesion":None},
         {"name":"M. Flekken",     "team":"DAL",  "price":14000000, "renovation":7000000,  "clausula":63000000,  "contrato":"1 Season",     "cesion":None},
@@ -784,7 +863,6 @@ def load_full_data():
         {"name":"K. Gordon",      "team":"VAN",  "price":1000000,  "renovation":500000,   "clausula":4500000,   "contrato":"1 Season",     "cesion":None},
         {"name":"Y. Eduardo",     "team":"CLB",  "price":1300000,  "renovation":650000,   "clausula":5850000,   "contrato":"1 Season",     "cesion":None},
     ]
-    # Filter: only keep players in PLAYER_DATA
     df = pd.DataFrame(raw)
     df = df[df["name"].isin(PLAYER_DATA.keys())].drop_duplicates(subset=["name"]).reset_index(drop=True)
     return df
@@ -816,13 +894,38 @@ def shield_img(team_code, size=22):
 
 
 # ── Load data ────────────────────────────────────────────────────────────────
-players_df = load_full_data()
+players_df_base = load_full_data()
+players_df_base["pos"]      = players_df_base["name"].map(lambda n: PLAYER_DATA.get(n, {}).get("pos", "?"))
+players_df_base["nat"]      = players_df_base["name"].map(lambda n: PLAYER_DATA.get(n, {}).get("nat", ""))
+players_df_base["nat_name"] = players_df_base["name"].map(lambda n: PLAYER_DATA.get(n, {}).get("nat_name", ""))
+players_df_base["sofifa"]   = players_df_base["name"].map(lambda n: PLAYER_DATA.get(n, {}).get("sofifa", 0))
 
-# Merge PLAYER_DATA info
-players_df["pos"]      = players_df["name"].map(lambda n: PLAYER_DATA.get(n, {}).get("pos", "?"))
-players_df["nat"]      = players_df["name"].map(lambda n: PLAYER_DATA.get(n, {}).get("nat", ""))
-players_df["nat_name"] = players_df["name"].map(lambda n: PLAYER_DATA.get(n, {}).get("nat_name", ""))
-players_df["sofifa"]   = players_df["name"].map(lambda n: PLAYER_DATA.get(n, {}).get("sofifa", 0))
+# Apply transfers from storage (mutations to team/cesion)
+def get_current_players():
+    df = players_df_base.copy()
+    completed = get_state("completed_transfers", [])
+    for t in completed:
+        mask = df["name"] == t["player"]
+        if not mask.any():
+            continue
+        tipo = t.get("tipo")
+        if tipo == "Compra":
+            df.loc[mask, "team"] = t["to_team"]
+            df.loc[mask, "cesion"] = None
+            df.loc[mask, "contrato"] = "1 Season"
+        elif tipo == "Cesion Corta":
+            df.loc[mask, "cesion"] = df.loc[mask, "team"].values[0]
+            df.loc[mask, "team"] = t["to_team"]
+            df.loc[mask, "contrato"] = "Cesion Corta"
+        elif tipo == "Cesion Larga":
+            df.loc[mask, "cesion"] = df.loc[mask, "team"].values[0]
+            df.loc[mask, "team"] = t["to_team"]
+            df.loc[mask, "contrato"] = "Cesion Larga"
+        elif tipo == "Pagar Cesion":
+            df.loc[mask, "team"] = t["to_team"]
+            df.loc[mask, "cesion"] = None
+            df.loc[mask, "contrato"] = "1 Season"
+    return df
 
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
@@ -833,10 +936,11 @@ with st.sidebar:
 
     page = st.radio(
         "Navegación",
-        ["⚽ Jugadores", "🏟️ Equipos", "💰 Presupuestos", "🔄 Cedidos", "📊 Estadísticas"],
+        ["⚽ Jugadores", "🏟️ Equipos", "💰 Presupuestos", "🔄 Cedidos", "📊 Estadísticas", "🤝 Ventana de Fichajes"],
         label_visibility="collapsed"
     )
     st.divider()
+    players_df = get_current_players()
     st.caption(f"**{len(players_df)}** jugadores · **{len(TEAM_LOGOS)}** equipos")
 
 
@@ -844,6 +948,7 @@ with st.sidebar:
 # PAGE: JUGADORES
 # ══════════════════════════════════════════════════════════════════════════════
 if page == "⚽ Jugadores":
+    players_df = get_current_players()
     st.markdown('<div class="page-title">MERCADO DE JUGADORES</div>', unsafe_allow_html=True)
     st.markdown('<div class="page-sub">MMJ League Season V · Jugadores · 30 Equipos</div>', unsafe_allow_html=True)
 
@@ -861,7 +966,6 @@ if page == "⚽ Jugadores":
 
     st.divider()
 
-    # Filters
     fc1, fc2, fc3, fc4, fc5, fc6 = st.columns([3, 2, 2, 1, 2, 1])
     search       = fc1.text_input("Buscar", placeholder="🔍 Buscar jugador o equipo...", label_visibility="collapsed")
     teams_list   = sorted(players_df["team"].unique())
@@ -891,7 +995,6 @@ if page == "⚽ Jugadores":
 
     st.caption(f"Mostrando **{len(df)}** jugadores")
 
-    # ── Player rows with photo + shield ──────────────────────────────────────
     for _, row in df.iterrows():
         pdata     = PLAYER_DATA.get(row["name"], {})
         pos       = pdata.get("pos", "?")
@@ -903,21 +1006,18 @@ if page == "⚽ Jugadores":
         photo_url   = get_player_photo(row["name"], sofifa_id)
         flag_url    = get_flag_url(nat)
         team_logo   = TEAM_LOGOS.get(row["team"], "")
-        # For loaned players cesion = original owner team
-        orig_logo   = TEAM_LOGOS.get(row["cesion"], "") if pd.notna(row.get("cesion")) else ""
+        orig_logo   = TEAM_LOGOS.get(row.get("cesion"), "") if pd.notna(row.get("cesion")) else ""
 
-        safe_name = row["name"].replace("'", "").replace('"', "")
+        safe_name = str(row["name"]).replace("'", "").replace('"', "")
         initials  = "+".join(safe_name.split()[:2])
         fallback  = f"https://ui-avatars.com/api/?name={initials}&background=1a2a3a&color=f0c040&size=80&bold=true"
 
         flag_html  = f'<img src="{flag_url}" style="width:18px;height:13px;object-fit:cover;border-radius:2px;vertical-align:middle;">' if flag_url else ""
         tlogo_html = f'<img src="{team_logo}" style="width:22px;height:22px;object-fit:contain;border-radius:50%;vertical-align:middle;background:rgba(255,255,255,0.04);">' if team_logo else ""
 
-        # Loan info
         loan_html = ""
         if pd.notna(row.get("cesion")):
             orig_logo_html = f'<img src="{orig_logo}" style="width:18px;height:18px;object-fit:contain;border-radius:50%;vertical-align:middle;background:rgba(255,255,255,0.04);">' if orig_logo else ""
-            badge_cls = "loan-corta" if row["contrato"] == "Cesion Corta" else "loan-larga"
             loan_html = (
                 f'<div style="display:flex;align-items:center;gap:4px;margin-top:3px;">'
                 f'{orig_logo_html}'
@@ -936,19 +1036,19 @@ if page == "⚽ Jugadores":
             )
 
         contrato_html = contrato_badge(row["contrato"])
-
         pos_bg  = pos_color + "22"
         pos_bdr = pos_color + "44"
+
         st.markdown(f"""
         <div class="player-row">
           <img src="{photo_url}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid rgba(232,184,75,0.35);flex-shrink:0;background:#0a1520;"
                onerror="this.onerror=null;this.src='{fallback}'">
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:800;color:#f0f4f8;">{row["name"]}</span>
-              <span style="background:{pos_bg};color:{pos_color};border:1px solid {pos_bdr};font-size:0.55rem;font-weight:900;letter-spacing:1.5px;padding:1px 6px;border-radius:3px;">{pos}</span>
+          <div style="flex:1;min-width:0;overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:800;color:#f0f4f8;white-space:nowrap;">{row["name"]}</span>
+              <span style="background:{pos_bg};color:{pos_color};border:1px solid {pos_bdr};font-size:0.55rem;font-weight:900;letter-spacing:1.5px;padding:1px 6px;border-radius:3px;flex-shrink:0;">{pos}</span>
               {flag_html}
-              <span style="font-size:0.65rem;color:#5a7080;">{nat_name}</span>
+              <span style="font-size:0.65rem;color:#5a7080;white-space:nowrap;">{nat_name}</span>
             </div>
             {loan_html}
           </div>
@@ -965,6 +1065,7 @@ if page == "⚽ Jugadores":
 # PAGE: EQUIPOS
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "🏟️ Equipos":
+    players_df = get_current_players()
     st.markdown('<div class="page-title">CLUBES</div>', unsafe_allow_html=True)
     st.markdown('<div class="page-sub">Plantillas por equipo · escudos · valor</div>', unsafe_allow_html=True)
 
@@ -979,15 +1080,17 @@ elif page == "🏟️ Equipos":
         total_val = squad["price"].sum()
         team_logo = TEAM_LOGOS.get(team_code, "")
 
-        # Header
         hc1, hc2 = st.columns([1, 8])
         with hc1:
             if team_logo:
                 st.image(team_logo, width=64)
         with hc2:
+            presi = TEAM_PRESIDENT.get(team_code, "?")
+            presi_color = PRESIDENTS.get(presi, {}).get("color", "#aaa")
             st.markdown(
                 f'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:1.5rem;font-weight:900;color:#f0f4f8;">'
-                f'{team_code} <span style="color:#7a9db0;font-size:1rem;font-weight:400;">— {TEAM_FULL_NAMES.get(team_code,"")}</span></div>'
+                f'{team_code} <span style="color:#7a9db0;font-size:1rem;font-weight:400;">— {TEAM_FULL_NAMES.get(team_code,"")}</span>'
+                f' <span style="font-size:0.75rem;color:{presi_color};background:{presi_color}22;border:1px solid {presi_color}44;padding:2px 8px;border-radius:4px;">{presi}</span></div>'
                 f'<div style="font-size:0.75rem;color:#5a7080;">'
                 f'{len(squad)} jugadores · Valor plantilla: <span style="color:#e8b84b;font-weight:700;">{fmt_money(total_val)}</span></div>',
                 unsafe_allow_html=True
@@ -1008,31 +1111,31 @@ elif page == "🏟️ Equipos":
                         pos_color = POS_COLORS.get(pos, "#667eea")
                         photo_url = get_player_photo(p["name"], sofifa)
                         flag_url  = get_flag_url(nat)
-                        safe_n    = p["name"].replace("'","").replace('"',"")
+                        safe_n    = str(p["name"]).replace("'","").replace('"',"")
                         fallback  = f"https://ui-avatars.com/api/?name={'+'.join(safe_n.split()[:2])}&background=1a2a3a&color=f0c040&size=80&bold=true"
                         flag_img  = f'<img src="{flag_url}" style="width:16px;height:12px;border-radius:2px;object-fit:cover;vertical-align:middle;">' if flag_url else ""
 
-                        # Loan indicator
                         if pd.notna(p.get("cesion")):
                             orig_logo = TEAM_LOGOS.get(p["cesion"], "")
                             orig_logo_html = f'<img src="{orig_logo}" style="width:14px;height:14px;object-fit:contain;border-radius:50%;vertical-align:middle;">' if orig_logo else ""
-                            loan_info = f'<div style="font-size:0.6rem;color:#f97316;margin-top:2px;">{orig_logo_html} {p["cesion"]} → cedido</div>'
+                            loan_info = f'<div style="font-size:0.6rem;color:#f97316;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{orig_logo_html} {p["cesion"]} → cedido</div>'
                         else:
                             loan_info = ""
 
                         pos_bg  = pos_color + "22"
                         pos_bdr = pos_color + "44"
+                        # FIXED: player name properly contained
                         st.markdown(f"""
                         <div class="player-card">
                           <div class="player-card-header">
                             <img src="{photo_url}" class="player-photo"
                                  onerror="this.onerror=null;this.src='{fallback}'">
                             <div class="player-info">
-                              <div class="player-name">{p["name"]}</div>
+                              <div class="player-name" title="{p['name']}">{p['name']}</div>
                               <div>
                                 <span class="player-pos-badge" style="background:{pos_bg};color:{pos_color};border:1px solid {pos_bdr};">{pos}</span>
                               </div>
-                              <div class="player-nat">{flag_img}<span>{nat_name}</span></div>
+                              <div class="player-nat">{flag_img}<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{nat_name}</span></div>
                               {loan_info}
                             </div>
                           </div>
@@ -1056,10 +1159,11 @@ elif page == "🏟️ Equipos":
 # PAGE: PRESUPUESTOS
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "💰 Presupuestos":
+    players_df = get_current_players()
     st.markdown('<div class="page-title">PRESUPUESTOS</div>', unsafe_allow_html=True)
     st.markdown('<div class="page-sub">Valor de plantilla por equipo</div>', unsafe_allow_html=True)
 
-    # Value by team
+    # Value by team — using actual "price" column (market value of players)
     team_vals = (
         players_df.groupby("team")["price"]
         .sum()
@@ -1068,6 +1172,7 @@ elif page == "💰 Presupuestos":
         .sort_values("valor_total", ascending=False)
     )
     team_vals["full_name"] = team_vals["team"].map(TEAM_FULL_NAMES)
+    team_vals["presidente"] = team_vals["team"].map(TEAM_PRESIDENT)
 
     total_b = team_vals["valor_total"].sum()
     avg_b   = team_vals["valor_total"].mean()
@@ -1080,13 +1185,30 @@ elif page == "💰 Presupuestos":
 
     st.divider()
 
-    # Ranking rows with shield
+    # ── BY PRESIDENT ─────────────────────────────────────────────────────────
+    st.markdown("#### 👑 Valor total por Presidente")
+    pc1, pc2, pc3 = st.columns(3)
+    for col, (presi, pdata) in zip([pc1, pc2, pc3], PRESIDENTS.items()):
+        presi_teams = pdata["teams"]
+        presi_val = team_vals[team_vals["team"].isin(presi_teams)]["valor_total"].sum()
+        col.markdown(f"""
+        <div style="background:linear-gradient(135deg,#0d1520,#111827);border:1px solid {pdata['color']}44;
+                    border-top:3px solid {pdata['color']};border-radius:14px;padding:16px;text-align:center;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:3px;color:{pdata['color']};">{presi}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:1.1rem;font-weight:700;color:#e8b84b;">{fmt_money(presi_val)}</div>
+          <div style="font-size:0.65rem;color:#5a7080;margin-top:4px;">{len(presi_teams)} equipos</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.divider()
+
     for i, (_, row) in enumerate(team_vals.iterrows()):
         logo = TEAM_LOGOS.get(row["team"], "")
         logo_html = f'<img src="{logo}" style="width:30px;height:30px;object-fit:contain;border-radius:50%;background:rgba(255,255,255,0.04);">' if logo else ""
         pct = row["valor_total"] / team_vals["valor_total"].max()
         bar_w = int(pct * 260)
         rank_color = "#e8b84b" if i < 3 else "#3b82f6" if i < 10 else "#5a7080"
+        presi_c = PRESIDENTS.get(row["presidente"], {}).get("color", "#aaa")
 
         st.markdown(f"""
         <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.02);
@@ -1095,6 +1217,7 @@ elif page == "💰 Presupuestos":
                        color:{rank_color};min-width:26px;">#{i+1}</span>
           {logo_html}
           <span style="font-weight:700;color:#dce8f0;min-width:50px;">{row["team"]}</span>
+          <span style="color:{presi_c};font-size:0.65rem;font-weight:700;background:{presi_c}18;padding:1px 6px;border-radius:4px;border:1px solid {presi_c}33;">{row["presidente"]}</span>
           <span style="color:#5a7080;font-size:0.75rem;flex:1;">{row["full_name"]}</span>
           <div style="width:260px;background:rgba(255,255,255,0.05);border-radius:4px;height:6px;margin-right:12px;">
             <div style="width:{bar_w}px;background:linear-gradient(90deg,#e8b84b,#f0c040);border-radius:4px;height:6px;"></div>
@@ -1106,7 +1229,7 @@ elif page == "💰 Presupuestos":
     st.divider()
     fig = px.bar(
         team_vals, x="valor_total", y="team", orientation="h",
-        title="Valor de plantilla por equipo",
+        title="Valor de plantilla por equipo (suma de valores de mercado de jugadores)",
         labels={"valor_total": "Valor ($)", "team": "Equipo"},
         color="valor_total",
         color_continuous_scale=["#1a3a5c", "#e8b84b"],
@@ -1126,6 +1249,7 @@ elif page == "💰 Presupuestos":
 # PAGE: CEDIDOS
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "🔄 Cedidos":
+    players_df = get_current_players()
     st.markdown('<div class="page-title">JUGADORES CEDIDOS</div>', unsafe_allow_html=True)
     st.markdown('<div class="page-sub">Cesiones activas · equipo original → equipo actual</div>', unsafe_allow_html=True)
 
@@ -1140,7 +1264,6 @@ elif page == "🔄 Cedidos":
 
     st.divider()
 
-    # ── Visual loan cards ────────────────────────────────────────────────────
     for _, p in loans.sort_values("price", ascending=False).iterrows():
         pdata    = PLAYER_DATA.get(p["name"], {})
         pos      = pdata.get("pos", "?")
@@ -1151,23 +1274,20 @@ elif page == "🔄 Cedidos":
 
         photo_url = get_player_photo(p["name"], sofifa)
         flag_url  = get_flag_url(nat)
-        # cesion = equipo ORIGINAL (propietario)
-        # team   = equipo ACTUAL (donde juega cedido)
-        orig_team   = p["cesion"]
-        dest_team   = p["team"]
-        orig_logo   = TEAM_LOGOS.get(orig_team, "")
-        dest_logo   = TEAM_LOGOS.get(dest_team, "")
+        orig_team = p["cesion"]
+        dest_team = p["team"]
+        orig_logo = TEAM_LOGOS.get(orig_team, "")
+        dest_logo = TEAM_LOGOS.get(dest_team, "")
 
-        safe_n   = p["name"].replace("'","").replace('"',"")
+        safe_n   = str(p["name"]).replace("'","").replace('"',"")
         fallback = f"https://ui-avatars.com/api/?name={'+'.join(safe_n.split()[:2])}&background=1a2a3a&color=f0c040&size=80&bold=true"
         flag_img = f'<img src="{flag_url}" style="width:16px;height:12px;border-radius:2px;object-fit:cover;vertical-align:middle;">' if flag_url else ""
 
         orig_logo_html = f'<img src="{orig_logo}" style="width:28px;height:28px;object-fit:contain;border-radius:50%;background:rgba(255,255,255,0.04);vertical-align:middle;">' if orig_logo else f'<span style="font-weight:700;color:#e8b84b;">{orig_team}</span>'
         dest_logo_html = f'<img src="{dest_logo}" style="width:28px;height:28px;object-fit:contain;border-radius:50%;background:rgba(255,255,255,0.04);vertical-align:middle;">' if dest_logo else f'<span style="font-weight:700;color:#e8b84b;">{dest_team}</span>'
 
-        badge_cls   = "loan-corta" if p["contrato"] == "Cesion Corta" else "loan-larga"
-        badge_label = "⚡ Cesión Corta" if p["contrato"] == "Cesion Corta" else "🔗 Cesión Larga"
         accent_col  = "#f97316" if p["contrato"] == "Cesion Corta" else "#ef4444"
+        badge_label = "⚡ Cesión Corta" if p["contrato"] == "Cesion Corta" else "🔗 Cesión Larga"
 
         pos_bg  = pos_color + "22"
         pos_bdr = pos_color + "44"
@@ -1177,13 +1297,13 @@ elif page == "🔄 Cedidos":
                     display:flex;align-items:center;gap:14px;">
           <img src="{photo_url}" style="width:54px;height:54px;border-radius:50%;object-fit:cover;border:2px solid {accent_col}66;flex-shrink:0;background:#0a1520;"
                onerror="this.onerror=null;this.src='{fallback}'">
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
-              <span style="font-family:'Barlow Condensed',sans-serif;font-size:1.05rem;font-weight:800;color:#f0f4f8;">{p["name"]}</span>
+          <div style="flex:1;min-width:0;overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
+              <span style="font-family:'Barlow Condensed',sans-serif;font-size:1.05rem;font-weight:800;color:#f0f4f8;white-space:nowrap;">{p["name"]}</span>
               <span style="background:{pos_bg};color:{pos_color};border:1px solid {pos_bdr};font-size:0.55rem;font-weight:900;padding:1px 6px;border-radius:3px;">{pos}</span>
               {flag_img}<span style="font-size:0.65rem;color:#5a7080;">{nat_name}</span>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               {orig_logo_html}
               <span style="font-size:0.75rem;font-weight:700;color:#e2eaf4;">{orig_team}</span>
               <span style="font-size:0.9rem;color:{accent_col};font-weight:900;">→</span>
@@ -1199,42 +1319,39 @@ elif page == "🔄 Cedidos":
         </div>
         """, unsafe_allow_html=True)
 
-    st.divider()
+    if len(loans) > 0:
+        st.divider()
+        st.markdown("#### Flujo de cesiones")
+        all_nodes = list(set(loans["cesion"].tolist() + loans["team"].tolist()))
+        node_idx  = {n: i for i, n in enumerate(all_nodes)}
+        source = [node_idx[r["cesion"]] for _, r in loans.iterrows()]
+        target = [node_idx[r["team"]]   for _, r in loans.iterrows()]
+        values = [r["price"] / 1e6      for _, r in loans.iterrows()]
 
-    # Sankey
-    st.markdown("#### Flujo de cesiones")
-    all_nodes    = list(set(loans["cesion"].tolist() + loans["team"].tolist()))
-    node_idx     = {n: i for i, n in enumerate(all_nodes)}
-    source = [node_idx[r["cesion"]] for _, r in loans.iterrows()]
-    target = [node_idx[r["team"]]   for _, r in loans.iterrows()]
-    values = [r["price"] / 1e6       for _, r in loans.iterrows()]
-
-    fig_sankey = go.Figure(go.Sankey(
-        node=dict(pad=12, thickness=16, label=all_nodes, color=["#e8b84b"] * len(all_nodes)),
-        link=dict(source=source, target=target, value=values, color="rgba(232,184,75,0.18)")
-    ))
-    fig_sankey.update_layout(
-        title="Origen (equipo propietario) → Destino (equipo actual)  [tamaño = valor M$]",
-        paper_bgcolor="#060a0f", font_color="#e2eaf4",
-        title_font_color="#e8b84b", height=400
-    )
-    st.plotly_chart(fig_sankey, use_container_width=True)
+        fig_sankey = go.Figure(go.Sankey(
+            node=dict(pad=12, thickness=16, label=all_nodes, color=["#e8b84b"] * len(all_nodes)),
+            link=dict(source=source, target=target, value=values, color="rgba(232,184,75,0.18)")
+        ))
+        fig_sankey.update_layout(
+            title="Origen → Destino [tamaño = valor M$]",
+            paper_bgcolor="#060a0f", font_color="#e2eaf4",
+            title_font_color="#e8b84b", height=400
+        )
+        st.plotly_chart(fig_sankey, use_container_width=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PAGE: ESTADÍSTICAS
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "📊 Estadísticas":
+    players_df = get_current_players()
     st.markdown('<div class="page-title">ESTADÍSTICAS</div>', unsafe_allow_html=True)
     st.markdown('<div class="page-sub">Distribuciones · Rankings · Contratos</div>', unsafe_allow_html=True)
 
     tab1, tab2, tab3, tab4 = st.tabs(["📈 Distribución valores", "🏆 Rankings", "🗂️ Contratos", "🌍 Nacionalidades"])
 
     with tab1:
-        # Top 20
         top20 = players_df.nlargest(20, "price").copy()
-        top20["Precio"] = top20["price"].apply(fmt_money)
-
         fig_top = go.Figure()
         for _, row in top20.iterrows():
             pos_color = POS_COLORS.get(row["pos"], "#667eea")
@@ -1248,7 +1365,6 @@ elif page == "📊 Estadísticas":
                 showlegend=False,
                 hovertemplate=f"<b>{row['name']}</b><br>{row['team']}<br>{fmt_money(row['price'])}<extra></extra>",
             ))
-
         fig_top.update_layout(
             title="Top 20 jugadores más valiosos",
             plot_bgcolor="#0d1520", paper_bgcolor="#060a0f",
@@ -1259,107 +1375,49 @@ elif page == "📊 Estadísticas":
         )
         st.plotly_chart(fig_top, use_container_width=True)
 
-        fig_hist = px.histogram(
-            players_df, x="price", nbins=40,
+        fig_hist = px.histogram(players_df, x="price", nbins=40,
             labels={"price": "Precio ($)", "count": "Jugadores"},
             title="Distribución de valores de mercado",
-            color_discrete_sequence=["#e8b84b"],
-        )
+            color_discrete_sequence=["#e8b84b"])
         fig_hist.update_layout(plot_bgcolor="#0d1520", paper_bgcolor="#060a0f",
                                font_color="#e2eaf4", title_font_color="#e8b84b")
         st.plotly_chart(fig_hist, use_container_width=True)
 
     with tab2:
-        team_stats = (
-            players_df.groupby("team")
+        team_stats = (players_df.groupby("team")
             .agg(valor_total=("price","sum"), jugadores=("name","count"), avg_valor=("price","mean"))
-            .reset_index()
-            .sort_values("valor_total", ascending=False)
-        )
-        fig_teams = px.bar(
-            team_stats, x="team", y="valor_total",
+            .reset_index().sort_values("valor_total", ascending=False))
+        fig_teams = px.bar(team_stats, x="team", y="valor_total",
             title="Valor total de plantilla por equipo",
             labels={"team":"Equipo","valor_total":"Valor Total ($)"},
-            color="valor_total",
-            color_continuous_scale=["#1a3a5c","#e8b84b"],
-            text=team_stats["valor_total"].apply(fmt_money),
-        )
-        fig_teams.update_layout(
-            plot_bgcolor="#0d1520", paper_bgcolor="#060a0f",
-            font_color="#e2eaf4", title_font_color="#e8b84b",
-            height=450, coloraxis_showscale=False
-        )
+            color="valor_total", color_continuous_scale=["#1a3a5c","#e8b84b"],
+            text=team_stats["valor_total"].apply(fmt_money))
+        fig_teams.update_layout(plot_bgcolor="#0d1520", paper_bgcolor="#060a0f",
+            font_color="#e2eaf4", title_font_color="#e8b84b", height=450, coloraxis_showscale=False)
         fig_teams.update_traces(textposition="outside", textfont_size=8)
         st.plotly_chart(fig_teams, use_container_width=True)
 
-        # By position
         pos_stats = players_df.groupby("pos").agg(total=("price","sum"), count=("name","count")).reset_index()
-        fig_pos = px.bar(
-            pos_stats, x="pos", y="total",
-            title="Valor total por posición",
-            labels={"pos":"Posición","total":"Valor ($)"},
-            color="pos",
-            color_discrete_map=POS_COLORS,
-            text=pos_stats["total"].apply(fmt_money),
-        )
+        fig_pos = px.bar(pos_stats, x="pos", y="total",
+            title="Valor total por posición", labels={"pos":"Posición","total":"Valor ($)"},
+            color="pos", color_discrete_map=POS_COLORS, text=pos_stats["total"].apply(fmt_money))
         fig_pos.update_layout(plot_bgcolor="#0d1520", paper_bgcolor="#060a0f",
-                              font_color="#e2eaf4", title_font_color="#e8b84b",
-                              showlegend=False)
+            font_color="#e2eaf4", title_font_color="#e8b84b", showlegend=False)
         fig_pos.update_traces(textposition="outside")
         st.plotly_chart(fig_pos, use_container_width=True)
 
     with tab3:
         contrato_counts = players_df["contrato"].value_counts().reset_index()
         contrato_counts.columns = ["contrato","count"]
-        fig_pie = px.pie(
-            contrato_counts, values="count", names="contrato",
+        fig_pie = px.pie(contrato_counts, values="count", names="contrato",
             title="Distribución de tipos de contrato",
-            color="contrato",
-            color_discrete_map=CONTRATO_COLORS,
-        )
-        fig_pie.update_layout(paper_bgcolor="#060a0f", font_color="#e2eaf4",
-                              title_font_color="#e8b84b")
+            color="contrato", color_discrete_map=CONTRATO_COLORS)
+        fig_pie.update_layout(paper_bgcolor="#060a0f", font_color="#e2eaf4", title_font_color="#e8b84b")
         st.plotly_chart(fig_pie, use_container_width=True)
-
-        # Cedidos breakdown
-        loans_df = players_df[players_df["cesion"].notna()]
-        st.markdown("#### Detalle de cedidos por tipo")
-        c1, c2 = st.columns(2)
-        with c1:
-            corta_df = loans_df[loans_df["contrato"]=="Cesion Corta"].sort_values("price",ascending=False)
-            st.markdown("**⚡ Cesión Corta**")
-            for _, p in corta_df.iterrows():
-                orig_logo = TEAM_LOGOS.get(p["cesion"],""); dest_logo = TEAM_LOGOS.get(p["team"],"")
-                ol = f'<img src="{orig_logo}" style="width:18px;height:18px;object-fit:contain;border-radius:50%;vertical-align:middle;">' if orig_logo else ""
-                dl = f'<img src="{dest_logo}" style="width:18px;height:18px;object-fit:contain;border-radius:50%;vertical-align:middle;">' if dest_logo else ""
-                st.markdown(
-                    f'<div style="background:rgba(249,115,22,0.06);border:1px solid rgba(249,115,22,0.2);border-radius:8px;padding:6px 10px;margin-bottom:4px;font-size:0.78rem;">'
-                    f'<b style="color:#f0f4f8;">{p["name"]}</b><br>'
-                    f'{ol} <span style="color:#f97316;font-size:0.7rem;">{p["cesion"]}</span>'
-                    f' <span style="color:#555;">→</span> {dl} <span style="color:#e2eaf4;font-size:0.7rem;">{p["team"]}</span>'
-                    f'<span style="float:right;color:#e8b84b;font-family:monospace;">{fmt_money(p["price"])}</span></div>',
-                    unsafe_allow_html=True
-                )
-        with c2:
-            larga_df = loans_df[loans_df["contrato"]=="Cesion Larga"].sort_values("price",ascending=False)
-            st.markdown("**🔗 Cesión Larga**")
-            for _, p in larga_df.iterrows():
-                orig_logo = TEAM_LOGOS.get(p["cesion"],""); dest_logo = TEAM_LOGOS.get(p["team"],"")
-                ol = f'<img src="{orig_logo}" style="width:18px;height:18px;object-fit:contain;border-radius:50%;vertical-align:middle;">' if orig_logo else ""
-                dl = f'<img src="{dest_logo}" style="width:18px;height:18px;object-fit:contain;border-radius:50%;vertical-align:middle;">' if dest_logo else ""
-                st.markdown(
-                    f'<div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:6px 10px;margin-bottom:4px;font-size:0.78rem;">'
-                    f'<b style="color:#f0f4f8;">{p["name"]}</b><br>'
-                    f'{ol} <span style="color:#ef4444;font-size:0.7rem;">{p["cesion"]}</span>'
-                    f' <span style="color:#555;">→</span> {dl} <span style="color:#e2eaf4;font-size:0.7rem;">{p["team"]}</span>'
-                    f'<span style="float:right;color:#e8b84b;font-family:monospace;">{fmt_money(p["price"])}</span></div>',
-                    unsafe_allow_html=True
-                )
 
     with tab4:
         nat_counts = players_df.groupby(["nat","nat_name"]).size().reset_index(name="count")
         nat_counts = nat_counts.sort_values("count", ascending=False).head(20)
-
         cols = st.columns(4)
         for i, (_, row) in enumerate(nat_counts.iterrows()):
             with cols[i % 4]:
@@ -1370,6 +1428,441 @@ elif page == "📊 Estadísticas":
                     f'border-radius:8px;padding:7px 10px;margin-bottom:5px;">'
                     f'{flag_html}<span style="font-size:0.78rem;color:#dce8f0;flex:1;">{row["nat_name"]}</span>'
                     f'<span style="font-family:monospace;font-size:0.85rem;font-weight:700;color:#e8b84b;">{row["count"]}</span>'
-                    f'</div>',
-                    unsafe_allow_html=True
+                    f'</div>', unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE: VENTANA DE FICHAJES
+# ══════════════════════════════════════════════════════════════════════════════
+elif page == "🤝 Ventana de Fichajes":
+    players_df = get_current_players()
+    st.markdown('<div class="page-title">VENTANA DE FICHAJES</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-sub">Negociaciones entre presidentes · Timer 30 días</div>', unsafe_allow_html=True)
+
+    # ── ADMIN: Timer control ──────────────────────────────────────────────────
+    with st.expander("⚙️ Control Administrador (Timer)", expanded=False):
+        col_a1, col_a2, col_a3 = st.columns(3)
+        with col_a1:
+            if st.button("🟢 Iniciar Ventana de 30 días", use_container_width=True):
+                end_date = (datetime.now() + timedelta(days=30)).isoformat()
+                set_state("transfer_window_end", end_date)
+                set_state("transfer_window_active", True)
+                st.success("¡Ventana de fichajes iniciada! Termina en 30 días.")
+                st.rerun()
+        with col_a2:
+            if st.button("🔴 Cerrar Ventana", use_container_width=True):
+                set_state("transfer_window_active", False)
+                st.warning("Ventana de fichajes cerrada.")
+                st.rerun()
+        with col_a3:
+            if st.button("🗑️ Resetear Transferencias", use_container_width=True):
+                set_state("offers", [])
+                set_state("completed_transfers", [])
+                st.success("Transferencias reseteadas.")
+                st.rerun()
+
+    # ── TIMER ─────────────────────────────────────────────────────────────────
+    window_active = get_state("transfer_window_active", False)
+    window_end_str = get_state("transfer_window_end", None)
+    window_open = False
+
+    if window_active and window_end_str:
+        try:
+            end_dt = datetime.fromisoformat(window_end_str)
+            now    = datetime.now()
+            remaining = end_dt - now
+            if remaining.total_seconds() > 0:
+                window_open = True
+                days_left    = remaining.days
+                hours_left   = remaining.seconds // 3600
+                minutes_left = (remaining.seconds % 3600) // 60
+                timer_html = f"""
+                <div class="timer-container">
+                  <div class="timer-label">⏱ VENTANA DE FICHAJES — TIEMPO RESTANTE</div>
+                  <div class="timer-value">{days_left}d {hours_left:02d}h {minutes_left:02d}m</div>
+                  <div style="font-size:0.7rem;color:#5a7080;margin-top:6px;">Cierre: {end_dt.strftime('%d/%m/%Y %H:%M')}</div>
+                </div>
+                """
+                st.markdown(timer_html, unsafe_allow_html=True)
+            else:
+                # Time expired — auto close and generate excel
+                set_state("transfer_window_active", False)
+                st.markdown('<div class="timer-container"><div class="timer-expired">⛔ VENTANA CERRADA</div><div style="font-size:0.8rem;color:#5a7080;margin-top:6px;">El periodo de fichajes ha terminado</div></div>', unsafe_allow_html=True)
+        except:
+            pass
+    elif not window_active:
+        st.markdown('<div style="background:#0d1520;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:20px;text-align:center;margin-bottom:20px;"><div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.5rem;letter-spacing:3px;color:#5a7080;">⏸ VENTANA CERRADA</div><div style="font-size:0.75rem;color:#3a5060;margin-top:4px;">El administrador debe iniciar la ventana de fichajes</div></div>', unsafe_allow_html=True)
+
+    st.divider()
+
+    # ── SELECTOR DE PRESIDENTE ────────────────────────────────────────────────
+    presi_sel = st.selectbox("🧑‍💼 Actuar como Presidente", ["JNKA", "MATI", "MAXI"], key="presi_selector")
+    presi_color = PRESIDENTS[presi_sel]["color"]
+    my_teams = PRESIDENTS[presi_sel]["teams"]
+
+    st.markdown(f"""
+    <div style="background:{presi_color}11;border:1px solid {presi_color}33;border-radius:10px;padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:2px;color:{presi_color};">{presi_sel}</span>
+      <span style="font-size:0.75rem;color:#7a9db0;">Equipos: {', '.join(my_teams)}</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    tab_enviar, tab_recibidas, tab_mis_ofertas, tab_historial, tab_excel = st.tabs([
+        "📤 Nueva Oferta", "📥 Ofertas Recibidas", "📋 Mis Ofertas", "✅ Historial", "📊 Exportar Excel"
+    ])
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # TAB: NUEVA OFERTA
+    # ──────────────────────────────────────────────────────────────────────────
+    with tab_enviar:
+        if not window_open:
+            st.warning("⛔ La ventana de fichajes no está activa. Solo el administrador puede abrirla.")
+        else:
+            st.markdown("#### 📤 Enviar oferta de fichaje")
+            
+            # Select the selling team (NOT owned by current president)
+            rival_teams = [t for t in players_df["team"].unique() if t not in my_teams]
+            rival_team = st.selectbox("🏟️ Equipo del que quieres fichar", sorted(rival_teams), key="rival_team_sel")
+            
+            # Players from that team
+            squad_rival = players_df[players_df["team"] == rival_team].sort_values("price", ascending=False)
+            player_options = squad_rival["name"].tolist()
+            
+            if player_options:
+                player_sel = st.selectbox("⚽ Jugador", player_options, key="player_offer_sel")
+                player_info = squad_rival[squad_rival["name"] == player_sel].iloc[0]
+                
+                # Show player info
+                pdata = PLAYER_DATA.get(player_sel, {})
+                pos_color = POS_COLORS.get(pdata.get("pos","?"), "#667eea")
+                ci1, ci2, ci3, ci4 = st.columns(4)
+                ci1.metric("Valor Mercado", fmt_money(player_info["price"]))
+                ci2.metric("Renovación", fmt_money(player_info["renovation"]))
+                ci3.metric("Cláusula", fmt_money(player_info["clausula"]))
+                ci4.metric("Posición", pdata.get("pos","?"))
+
+                st.markdown("---")
+                
+                # Offer type
+                is_cedido = pd.notna(player_info.get("cesion"))
+                tipo_options = ["Compra"]
+                
+                if not is_cedido:
+                    tipo_options += ["Cesion Corta", "Cesion Larga"]
+                else:
+                    tipo_options += ["Pagar Cesion"]
+                    st.info(f"Este jugador está cedido de **{player_info['cesion']}** a **{player_info['team']}**. Puedes 'Pagar Cesion' para hacerlo definitivo.")
+                
+                tipo_oferta = st.selectbox("💼 Tipo de operación", tipo_options, key="tipo_oferta_sel")
+                
+                # Destination team (one of my teams)
+                dest_team = st.selectbox("🏟️ Mi equipo que recibe al jugador", sorted(my_teams), key="dest_team_sel")
+                
+                # Offer amount
+                default_offer = player_info["price"]
+                if tipo_oferta == "Cesion Corta":
+                    default_offer = int(player_info["price"] * 0.15)
+                elif tipo_oferta == "Cesion Larga":
+                    default_offer = int(player_info["price"] * 0.30)
+                elif tipo_oferta == "Pagar Cesion":
+                    default_offer = int(player_info["renovation"])
+                
+                offer_amount = st.number_input(
+                    f"💰 Monto de oferta ($)", 
+                    min_value=0, 
+                    value=default_offer, 
+                    step=500000,
+                    format="%d",
+                    key="offer_amount_input"
                 )
+                
+                msg = st.text_area("💬 Mensaje (opcional)", placeholder="Escribe un mensaje para el otro presidente...", key="offer_msg", max_chars=300)
+                
+                col_btn1, col_btn2 = st.columns([2,1])
+                with col_btn1:
+                    if st.button("📤 Enviar Oferta", use_container_width=True, type="primary"):
+                        # Validation
+                        if rival_team in my_teams:
+                            st.error("No puedes fichar de tu propio equipo.")
+                        else:
+                            rival_presi = TEAM_PRESIDENT.get(rival_team, "?")
+                            new_offer = {
+                                "id": f"offer_{datetime.now().strftime('%Y%m%d%H%M%S%f')}",
+                                "from_presi": presi_sel,
+                                "to_presi": rival_presi,
+                                "from_team": dest_team,
+                                "to_team": rival_team,
+                                "player": player_sel,
+                                "tipo": tipo_oferta,
+                                "amount": offer_amount,
+                                "message": msg,
+                                "status": "Pendiente",
+                                "created_at": datetime.now().isoformat(),
+                                "response_msg": ""
+                            }
+                            offers = get_state("offers", [])
+                            offers.append(new_offer)
+                            set_state("offers", offers)
+                            st.success(f"✅ Oferta enviada a **{rival_presi}** por **{player_sel}** ({tipo_oferta}) por {fmt_money(offer_amount)}")
+                            st.rerun()
+                with col_btn2:
+                    st.caption(f"Precio sugerido: {fmt_money(default_offer)}")
+            else:
+                st.info("Este equipo no tiene jugadores disponibles.")
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # TAB: OFERTAS RECIBIDAS
+    # ──────────────────────────────────────────────────────────────────────────
+    with tab_recibidas:
+        if not window_open:
+            st.warning("⛔ La ventana de fichajes no está activa.")
+        else:
+            st.markdown("#### 📥 Ofertas recibidas para mis equipos")
+            all_offers = get_state("offers", [])
+            my_received = [o for o in all_offers if o["to_presi"] == presi_sel and o["status"] == "Pendiente"]
+            
+            if not my_received:
+                st.info("No tienes ofertas pendientes.")
+            else:
+                for offer in my_received:
+                    from_presi_c = PRESIDENTS.get(offer["from_presi"], {}).get("color", "#aaa")
+                    tipo_color = {"Compra": "#e8b84b", "Cesion Corta": "#f97316", "Cesion Larga": "#ef4444", "Pagar Cesion": "#22c55e"}.get(offer["tipo"], "#aaa")
+                    
+                    pdata = PLAYER_DATA.get(offer["player"], {})
+                    pos   = pdata.get("pos", "?")
+                    sofifa = pdata.get("sofifa", 0)
+                    photo_url = get_player_photo(offer["player"], sofifa)
+                    safe_n = str(offer["player"]).replace("'","").replace('"',"")
+                    fallback = f"https://ui-avatars.com/api/?name={'+'.join(safe_n.split()[:2])}&background=1a2a3a&color=f0c040&size=80&bold=true"
+                    pos_color = POS_COLORS.get(pos, "#667eea")
+                    
+                    # Find player current price
+                    p_row = players_df[players_df["name"] == offer["player"]]
+                    market_val = p_row["price"].values[0] if len(p_row) > 0 else 0
+                    
+                    st.markdown(f"""
+                    <div style="background:#0d1520;border:1px solid {tipo_color}44;border-left:3px solid {tipo_color};
+                                border-radius:12px;padding:14px 16px;margin-bottom:8px;">
+                      <div style="display:flex;align-items:center;gap:12px;">
+                        <img src="{photo_url}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;flex-shrink:0;"
+                             onerror="this.onerror=null;this.src='{fallback}'">
+                        <div style="flex:1;min-width:0;">
+                          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;color:#f0f4f8;">{offer['player']}</span>
+                            <span style="background:{pos_color}22;color:{pos_color};font-size:0.55rem;font-weight:900;padding:1px 5px;border-radius:3px;">{pos}</span>
+                            <span style="background:{tipo_color}22;color:{tipo_color};font-size:0.62rem;font-weight:800;padding:2px 7px;border-radius:5px;border:1px solid {tipo_color}44;">{offer['tipo']}</span>
+                          </div>
+                          <div style="font-size:0.75rem;color:#7a9db0;margin-top:2px;">
+                            De: <span style="color:{from_presi_c};font-weight:700;">{offer['from_presi']}</span> ({offer['from_team']}) → Tu equipo: <b style="color:#e2eaf4;">{offer['to_team']}</b>
+                          </div>
+                          <div style="font-size:0.72rem;color:#5a7080;margin-top:2px;">Valor mercado: {fmt_money(market_val)} · Oferta: <span style="color:#e8b84b;font-weight:700;font-family:monospace;">{fmt_money(offer['amount'])}</span></div>
+                          {f'<div style="font-size:0.7rem;color:#7a9db0;margin-top:3px;font-style:italic;">"{offer["message"]}"</div>' if offer.get("message") else ""}
+                        </div>
+                      </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    col_acc, col_rej, col_msg = st.columns([1, 1, 3])
+                    resp_key = f"resp_{offer['id']}"
+                    resp_msg = col_msg.text_input("Respuesta (opcional)", key=resp_key, placeholder="Comentario...")
+                    
+                    with col_acc:
+                        if st.button(f"✅ Aceptar", key=f"acc_{offer['id']}", use_container_width=True):
+                            # Update offer
+                            all_offers2 = get_state("offers", [])
+                            for o in all_offers2:
+                                if o["id"] == offer["id"]:
+                                    o["status"] = "Aceptada"
+                                    o["response_msg"] = resp_msg
+                            set_state("offers", all_offers2)
+                            
+                            # Execute transfer
+                            completed = get_state("completed_transfers", [])
+                            completed.append({
+                                "player": offer["player"],
+                                "from_team": offer["to_team"],
+                                "to_team": offer["from_team"],
+                                "tipo": offer["tipo"],
+                                "amount": offer["amount"],
+                                "from_presi": offer["to_presi"],
+                                "to_presi": offer["from_presi"],
+                                "date": datetime.now().isoformat()
+                            })
+                            set_state("completed_transfers", completed)
+                            st.success(f"✅ Oferta aceptada. {offer['player']} → {offer['from_team']}")
+                            st.rerun()
+                    
+                    with col_rej:
+                        if st.button(f"❌ Rechazar", key=f"rej_{offer['id']}", use_container_width=True):
+                            all_offers2 = get_state("offers", [])
+                            for o in all_offers2:
+                                if o["id"] == offer["id"]:
+                                    o["status"] = "Rechazada"
+                                    o["response_msg"] = resp_msg
+                            set_state("offers", all_offers2)
+                            st.warning(f"Oferta por {offer['player']} rechazada.")
+                            st.rerun()
+                    
+                    st.markdown("---")
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # TAB: MIS OFERTAS
+    # ──────────────────────────────────────────────────────────────────────────
+    with tab_mis_ofertas:
+        st.markdown("#### 📋 Ofertas que he enviado")
+        all_offers = get_state("offers", [])
+        my_sent = [o for o in all_offers if o["from_presi"] == presi_sel]
+        
+        if not my_sent:
+            st.info("No has enviado ninguna oferta todavía.")
+        else:
+            for offer in sorted(my_sent, key=lambda x: x["created_at"], reverse=True):
+                status_color = {"Pendiente": "#f59e0b", "Aceptada": "#22c55e", "Rechazada": "#ef4444"}.get(offer["status"], "#aaa")
+                status_icon  = {"Pendiente": "⏳", "Aceptada": "✅", "Rechazada": "❌"}.get(offer["status"], "❓")
+                tipo_color   = {"Compra": "#e8b84b", "Cesion Corta": "#f97316", "Cesion Larga": "#ef4444", "Pagar Cesion": "#22c55e"}.get(offer["tipo"], "#aaa")
+                to_presi_c   = PRESIDENTS.get(offer["to_presi"], {}).get("color", "#aaa")
+                
+                st.markdown(f"""
+                <div style="background:#0d1520;border:1px solid {status_color}33;border-left:3px solid {status_color};
+                            border-radius:10px;padding:12px 16px;margin-bottom:7px;">
+                  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;color:#f0f4f8;">{offer['player']}</span>
+                    <span style="background:{tipo_color}22;color:{tipo_color};font-size:0.62rem;font-weight:800;padding:2px 7px;border-radius:5px;">{offer['tipo']}</span>
+                    <span style="background:{status_color}22;color:{status_color};font-size:0.62rem;font-weight:800;padding:2px 7px;border-radius:5px;">{status_icon} {offer['status']}</span>
+                  </div>
+                  <div style="font-size:0.73rem;color:#7a9db0;margin-top:4px;">
+                    Para: <span style="color:{to_presi_c};font-weight:700;">{offer['to_presi']}</span> ({offer['to_team']}) · Oferta: 
+                    <span style="color:#e8b84b;font-weight:700;font-family:monospace;">{fmt_money(offer['amount'])}</span>
+                  </div>
+                  {f'<div style="font-size:0.68rem;color:#5a7080;margin-top:2px;font-style:italic;">Respuesta: "{offer["response_msg"]}"</div>' if offer.get("response_msg") else ""}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Allow cancelling pending offers
+                if offer["status"] == "Pendiente":
+                    if st.button(f"🗑️ Cancelar oferta por {offer['player']}", key=f"cancel_{offer['id']}"):
+                        all_offers2 = get_state("offers", [])
+                        all_offers2 = [o for o in all_offers2 if o["id"] != offer["id"]]
+                        set_state("offers", all_offers2)
+                        st.rerun()
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # TAB: HISTORIAL
+    # ──────────────────────────────────────────────────────────────────────────
+    with tab_historial:
+        st.markdown("#### ✅ Transferencias completadas")
+        completed = get_state("completed_transfers", [])
+        
+        if not completed:
+            st.info("Aún no se han completado transferencias.")
+        else:
+            for t in sorted(completed, key=lambda x: x["date"], reverse=True):
+                tipo_color = {"Compra": "#e8b84b", "Cesion Corta": "#f97316", "Cesion Larga": "#ef4444", "Pagar Cesion": "#22c55e"}.get(t["tipo"], "#aaa")
+                from_presi_c = PRESIDENTS.get(t["from_presi"], {}).get("color", "#aaa")
+                to_presi_c   = PRESIDENTS.get(t["to_presi"], {}).get("color", "#aaa")
+                
+                # logos
+                ol = TEAM_LOGOS.get(t["from_team"], "")
+                dl = TEAM_LOGOS.get(t["to_team"], "")
+                ol_html = f'<img src="{ol}" style="width:22px;height:22px;object-fit:contain;border-radius:50%;vertical-align:middle;">' if ol else ""
+                dl_html = f'<img src="{dl}" style="width:22px;height:22px;object-fit:contain;border-radius:50%;vertical-align:middle;">' if dl else ""
+                
+                try:
+                    date_str = datetime.fromisoformat(t["date"]).strftime("%d/%m/%Y %H:%M")
+                except:
+                    date_str = t.get("date","")
+                
+                st.markdown(f"""
+                <div style="background:#0d1520;border:1px solid rgba(34,197,94,0.2);border-left:3px solid #22c55e;
+                            border-radius:10px;padding:12px 16px;margin-bottom:7px;">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;color:#f0f4f8;">⚽ {t['player']}</span>
+                    <span style="background:{tipo_color}22;color:{tipo_color};font-size:0.62rem;font-weight:800;padding:2px 7px;border-radius:5px;">{t['tipo']}</span>
+                    <span style="font-family:monospace;font-size:0.8rem;color:#e8b84b;font-weight:700;">{fmt_money(t['amount'])}</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap;">
+                    {ol_html} <span style="font-size:0.72rem;color:{from_presi_c};font-weight:600;">{t['from_team']} ({t['from_presi']})</span>
+                    <span style="color:#22c55e;font-weight:900;">→</span>
+                    {dl_html} <span style="font-size:0.72rem;color:{to_presi_c};font-weight:600;">{t['to_team']} ({t['to_presi']})</span>
+                    <span style="color:#3a5060;font-size:0.65rem;margin-left:auto;">{date_str}</span>
+                  </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # TAB: EXPORTAR EXCEL
+    # ──────────────────────────────────────────────────────────────────────────
+    with tab_excel:
+        st.markdown("#### 📊 Exportar estado actual de equipos")
+        st.info("Genera un Excel con el estado actual de todos los jugadores, incluyendo transferencias completadas durante la ventana de fichajes.")
+        
+        current_df = get_current_players()
+        completed  = get_state("completed_transfers", [])
+        
+        # Stats
+        ec1, ec2, ec3 = st.columns(3)
+        ec1.metric("Jugadores totales", len(current_df))
+        ec2.metric("Transferencias completadas", len(completed))
+        ec3.metric("Cedidos activos", int(current_df["cesion"].notna().sum()))
+        
+        if st.button("⬇️ Descargar Excel", use_container_width=True, type="primary"):
+            # Build export DataFrame
+            export_rows = []
+            for _, p in current_df.iterrows():
+                presi = TEAM_PRESIDENT.get(p["team"], "?")
+                pdata = PLAYER_DATA.get(p["name"], {})
+                row = {
+                    "Jugador": p["name"],
+                    "Posición": pdata.get("pos", "?"),
+                    "Nacionalidad": pdata.get("nat_name", ""),
+                    "Equipo Actual": p["team"],
+                    "Equipo Completo": TEAM_FULL_NAMES.get(p["team"], ""),
+                    "Presidente": presi,
+                    "Equipo Original (Cesion)": p.get("cesion") if pd.notna(p.get("cesion")) else "",
+                    "Tipo Contrato": p["contrato"],
+                    "Valor Mercado ($)": p["price"],
+                    "Renovación ($)": p["renovation"],
+                    "Cláusula ($)": p["clausula"],
+                }
+                export_rows.append(row)
+            
+            export_df = pd.DataFrame(export_rows).sort_values(["Equipo Actual", "Valor Mercado ($)"], ascending=[True, False])
+            
+            # Transfers sheet
+            transfer_rows = []
+            for t in completed:
+                transfer_rows.append({
+                    "Jugador": t["player"],
+                    "Tipo": t["tipo"],
+                    "Monto ($)": t["amount"],
+                    "Equipo Origen": t["from_team"],
+                    "Presidente Origen": t.get("from_presi",""),
+                    "Equipo Destino": t["to_team"],
+                    "Presidente Destino": t.get("to_presi",""),
+                    "Fecha": t.get("date",""),
+                })
+            transfer_df = pd.DataFrame(transfer_rows) if transfer_rows else pd.DataFrame(columns=["Jugador","Tipo","Monto ($)","Equipo Origen","Equipo Destino","Fecha"])
+            
+            # Team summary sheet
+            team_summary = export_df.groupby(["Equipo Actual","Equipo Completo","Presidente"]).agg(
+                Jugadores=("Jugador","count"),
+                Valor_Total=("Valor Mercado ($)","sum")
+            ).reset_index().sort_values("Valor_Total", ascending=False)
+            team_summary.columns = ["Equipo","Equipo Completo","Presidente","Jugadores","Valor Total ($)"]
+            
+            # Write to Excel in memory
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+                export_df.to_excel(writer, sheet_name="Plantillas", index=False)
+                transfer_df.to_excel(writer, sheet_name="Transferencias", index=False)
+                team_summary.to_excel(writer, sheet_name="Resumen Equipos", index=False)
+            buffer.seek(0)
+            
+            st.download_button(
+                label="📥 Descargar MMJ_League_Estado.xlsx",
+                data=buffer,
+                file_name=f"MMJ_League_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+            st.success("✅ Excel generado con 3 hojas: Plantillas, Transferencias y Resumen por Equipo.")
