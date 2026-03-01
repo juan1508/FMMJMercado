@@ -937,14 +937,16 @@ if page == "⚽ Jugadores":
 
         contrato_html = contrato_badge(row["contrato"])
 
-        st.markdown(f""
+        pos_bg  = pos_color + "22"
+        st.markdown(f"""
+        pos_bdr = pos_color + "44"
         <div class="player-row">
           <img src="{photo_url}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid rgba(232,184,75,0.35);flex-shrink:0;background:#0a1520;"
                onerror="this.onerror=null;this.src='{fallback}'">
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;">
               <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:800;color:#f0f4f8;">{row["name"]}</span>
-              <span style="background:{pos_color}22;color:{pos_color};border:1px solid {pos_color}44;font-size:0.55rem;font-weight:900;letter-spacing:1.5px;padding:1px 6px;border-radius:3px;">{pos}</span>
+              <span style="background:{pos_bg};color:{pos_color};border:1px solid {pos_bdr};font-size:0.55rem;font-weight:900;letter-spacing:1.5px;padding:1px 6px;border-radius:3px;">{pos}</span>
               {flag_html}
               <span style="font-size:0.65rem;color:#5a7080;">{nat_name}</span>
             </div>
@@ -956,7 +958,7 @@ if page == "⚽ Jugadores":
             <div style="margin-top:3px;">{contrato_html}</div>
           </div>
         </div>
-        "", unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1018,7 +1020,9 @@ elif page == "🏟️ Equipos":
                         else:
                             loan_info = ""
 
+                        pos_bg  = pos_color + "22"
                         st.markdown(f"""
+                        pos_bdr = pos_color + "44"
                         <div class="player-card">
                           <div class="player-card-header">
                             <img src="{photo_url}" class="player-photo"
@@ -1026,7 +1030,7 @@ elif page == "🏟️ Equipos":
                             <div class="player-info">
                               <div class="player-name">{p["name"]}</div>
                               <div>
-                                <span class="player-pos-badge" style="background:{pos_color}22;color:{pos_color};border:1px solid {pos_color}44;">{pos}</span>
+                                <span class="player-pos-badge" style="background:{pos_bg};color:{pos_color};border:1px solid {pos_bdr};">{pos}</span>
                               </div>
                               <div class="player-nat">{flag_img}<span>{nat_name}</span></div>
                               {loan_info}
@@ -1165,7 +1169,9 @@ elif page == "🔄 Cedidos":
         badge_label = "⚡ Cesión Corta" if p["contrato"] == "Cesion Corta" else "🔗 Cesión Larga"
         accent_col  = "#f97316" if p["contrato"] == "Cesion Corta" else "#ef4444"
 
+        pos_bg  = pos_color + "22"
         st.markdown(f"""
+        pos_bdr = pos_color + "44"
         <div style="background:linear-gradient(160deg,#0d1b2a,#0a1a28);border:1px solid rgba(255,255,255,0.07);
                     border-left:3px solid {accent_col};border-radius:12px;padding:14px 16px;margin-bottom:8px;
                     display:flex;align-items:center;gap:14px;">
@@ -1174,7 +1180,7 @@ elif page == "🔄 Cedidos":
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
               <span style="font-family:'Barlow Condensed',sans-serif;font-size:1.05rem;font-weight:800;color:#f0f4f8;">{p["name"]}</span>
-              <span style="background:{pos_color}22;color:{pos_color};border:1px solid {pos_color}44;font-size:0.55rem;font-weight:900;padding:1px 6px;border-radius:3px;">{pos}</span>
+              <span style="background:{pos_bg};color:{pos_color};border:1px solid {pos_bdr};font-size:0.55rem;font-weight:900;padding:1px 6px;border-radius:3px;">{pos}</span>
               {flag_img}<span style="font-size:0.65rem;color:#5a7080;">{nat_name}</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
