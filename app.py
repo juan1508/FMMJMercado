@@ -328,7 +328,7 @@ PLAYER_DATA = {
     "T. Gulliksen":        {"pos": "FWD", "nat": "no", "nat_name": "Noruega",        "sofifa": 247025},
     "R. Bardghji":         {"pos": "FWD", "nat": "se", "nat_name": "Suecia",         "sofifa": 265600},
     "M. Maignan":          {"pos": "GK",  "nat": "fr", "nat_name": "Francia",        "sofifa": 215698},
-    "N. Schlotterbeck":    {"pos": "DEF", "nat": "de", "nat_name": "Alemania",       "sofifa": 257710},
+    "N. Schlotterbeck":    {"pos": "DEF", "nat": "de", "nat_name": "Alemania",       "sofifa": 247819},
     "F. Torres":           {"pos": "FWD", "nat": "es", "nat_name": "España",         "sofifa": 241461},
     "L. Díaz":             {"pos": "FWD", "nat": "co", "nat_name": "Colombia",       "sofifa": 241084},
     "A. Davies":           {"pos": "DEF", "nat": "ca", "nat_name": "Canadá",         "sofifa": 234396},
