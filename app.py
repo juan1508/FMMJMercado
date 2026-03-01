@@ -689,7 +689,6 @@ def load_full_data():
         {"name":"Gabriel",        "team":"RBNY", "price":82500000, "renovation":41250000, "clausula":371250000, "contrato":"1 Season",     "cesion":None},
         {"name":"J. Tah",         "team":"SEA",  "price":68500000, "renovation":34250000, "clausula":308250000, "contrato":"1 Season",     "cesion":None},
         {"name":"N. Schlotterbeck","team":"NHS", "price":92000000, "renovation":46000000, "clausula":414000000, "contrato":"2 Season",     "cesion":None},
-        {"name":"A. Bastoni",     "team":"MIA",  "price":88500000, "renovation":44250000, "clausula":398250000, "contrato":"1 Season",     "cesion":None},
         {"name":"M. Maignan",     "team":"NHS",  "price":74000000, "renovation":37000000, "clausula":333000000, "contrato":"1 Season",     "cesion":None},
         {"name":"G. Donnarumma",  "team":"TOR",  "price":76000000, "renovation":38000000, "clausula":342000000, "contrato":"1 Season",     "cesion":None},
         {"name":"Y. Sommer",      "team":"ORL",  "price":9000000,  "renovation":4500000,  "clausula":40500000,  "contrato":"Cesion Larga", "cesion":"ATL"},
