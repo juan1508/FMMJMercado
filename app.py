@@ -679,6 +679,7 @@ TEAM_DT = {
 def load_full_data():
     raw = [
         {"name":"M. Salah",       "team":"ATL",  "price":104000000,"renovation":52000000, "clausula":468000000, "contrato":"1 Season",     "cesion":None},
+        {"name":"J. Brandt",      "team":"LAFC",  "price":41000000,"renovation":20500000, "clausula":184500000, "contrato":"1 Season",     "cesion":None},
         {"name":"Rodri",          "team":"TOR",  "price":115500000,"renovation":57750000, "clausula":519750000, "contrato":"1 Season",     "cesion":None},
         {"name":"K. Mbappé",      "team":"LAFC", "price":211000000,"renovation":105500000,"clausula":949500000, "contrato":"Cesion Corta", "cesion":"NSH"},
         {"name":"Vini Jr.",       "team":"ATX",  "price":193500000,"renovation":96750000, "clausula":870750000, "contrato":"1 Season",     "cesion":None},
