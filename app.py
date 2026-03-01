@@ -417,7 +417,7 @@ PLAYER_DATA = {
     "Alisson":             {"pos": "GK",  "nat": "br", "nat_name": "Brasil",         "sofifa": 212831},
     "Casemiro":            {"pos": "MID", "nat": "br", "nat_name": "Brasil",         "sofifa": 200145},
     "C. Nkunku":           {"pos": "FWD", "nat": "fr", "nat_name": "Francia",        "sofifa": 232411},
-    "Rúben Dias":          {"pos": "DEF", "nat": "pt", "nat_name": "Portugal",       "sofifa": 239477},
+    "Rúben Dias":          {"pos": "DEF", "nat": "pt", "nat_name": "Portugal",       "sofifa": 239818},
     "Neymar Jr":           {"pos": "FWD", "nat": "br", "nat_name": "Brasil",         "sofifa": 190871},
     "G. Reyna":            {"pos": "MID", "nat": "us", "nat_name": "EE.UU.",         "sofifa": 245541},
     "B. Castro":           {"pos": "MID", "nat": "co", "nat_name": "Colombia",       "sofifa": 271549},
