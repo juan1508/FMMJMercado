@@ -291,6 +291,56 @@ def logo_img(team_code, size=22):
     return f'<span style="font-size:0.7rem;font-weight:700;color:#e8b84b;">{team_code}</span>'
 
 
+# ── WHATSAPP ──────────────────────────────────────────────────────────────────
+WA_NUMBERS = {
+    "JNKA": "573022105787",
+    "MATI": "573184375432",
+    "MAXI": "573025127701",
+}
+
+def wa_link(to_presi: str, text: str) -> str:
+    """Genera un link de WhatsApp con mensaje pre-armado para abrir en nueva pestaña."""
+    import urllib.parse
+    number = WA_NUMBERS.get(to_presi, "")
+    if not number:
+        return ""
+    encoded = urllib.parse.quote(text)
+    return f"https://wa.me/{number}?text={encoded}"
+
+def wa_button(to_presi: str, text: str, label: str = "📲 Notificar por WhatsApp") -> None:
+    """Renderiza un botón verde de WhatsApp que abre el chat con mensaje pre-armado."""
+    link = wa_link(to_presi, text)
+    if not link:
+        return
+    st.markdown(
+        f'<a href="{link}" target="_blank" style="'
+        f'display:inline-flex;align-items:center;gap:8px;'
+        f'background:linear-gradient(135deg,#128C7E,#25D366);'
+        f'color:#fff;font-family:\'DM Sans\',sans-serif;font-size:0.78rem;font-weight:700;'
+        f'padding:8px 18px;border-radius:8px;text-decoration:none;'
+        f'border:1px solid rgba(255,255,255,0.15);'
+        f'box-shadow:0 2px 12px rgba(37,211,102,0.25);'
+        f'transition:opacity 0.15s;">'
+        f'<svg width="18" height="18" viewBox="0 0 24 24" fill="white">'
+        f'<path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15'
+        f'-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475'
+        f'-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52'
+        f'.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207'
+        f'-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372'
+        f'-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2'
+        f' 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719'
+        f' 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>'
+        f'<path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.1 1.523 5.827L.057 23.882'
+        f'a.5.5 0 0 0 .61.61l6.055-1.466A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12'
+        f'S18.627 0 12 0zm0 21.818a9.795 9.795 0 0 1-5.003-1.373l-.36-.214-3.714.9.917-3.617'
+        f'-.234-.372A9.795 9.795 0 0 1 2.182 12C2.182 6.57 6.57 2.182 12 2.182'
+        f'S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/>'
+        f'</svg>'
+        f'{label}</a>',
+        unsafe_allow_html=True
+    )
+
+
 @st.cache_data
 def load_base_data():
     df = pd.DataFrame(PLAYERS_RAW)
@@ -1083,9 +1133,35 @@ elif page == "🤝 Fichajes":
                         offers2.append(new_offer)
                         set_state("offers", offers2)
                         st.success(f"✅ Oferta enviada a **{rival_presi}** por **{player_sel}** — {fmt_money(offer_amount)}")
-                        st.rerun()
+                        st.session_state["last_wa"] = {
+                            "event": "nueva_oferta",
+                            "to_presi": rival_presi,
+                            "player": player_sel,
+                            "tipo": tipo_oferta,
+                            "amount": offer_amount,
+                            "from_presi": presi_sel,
+                            "from_team": dest_team,
+                            "to_team": rival_team,
+                            "msg": msg,
+                        }
                 with col_btn2:
                     st.caption(f"Sugerido: {fmt_money(default_offer)}")
+
+                # ── Botón WA tras enviar oferta ───────────────────────────────
+                last_wa = st.session_state.get("last_wa", {})
+                if last_wa.get("event") == "nueva_oferta" and last_wa.get("from_presi") == presi_sel:
+                    wa_text = (
+                        f"🚨 *MMJ LEAGUE — NUEVA OFERTA* 🚨\n\n"
+                        f"⚽ Jugador: *{last_wa['player']}*\n"
+                        f"💼 Tipo: *{last_wa['tipo']}*\n"
+                        f"💰 Monto: *{fmt_money(last_wa['amount'])}*\n"
+                        f"📤 De: *{last_wa['from_presi']}* ({last_wa['from_team']})\n"
+                        f"📥 Tu equipo: *{last_wa['to_team']}*\n"
+                        + (f"💬 Mensaje: _{last_wa['msg']}_\n" if last_wa.get('msg') else "") +
+                        f"\n➡️ Entra a la app para responder."
+                    )
+                    st.markdown("**📲 Notifica al presidente contrario:**")
+                    wa_button(last_wa["to_presi"], wa_text, f"WhatsApp a {last_wa['to_presi']}")
 
     # ── Tab 2: Bandeja de entrada ─────────────────────────────────────────────
     with tab_bandeja:
@@ -1179,7 +1255,18 @@ elif page == "🤝 Fichajes":
                             })
                             set_state("completed_transfers", completed)
                             st.success(f"✅ {offer['player']} → {offer['from_team']}")
-                            st.rerun()
+                            wa_text = (
+                                f"✅ *MMJ LEAGUE — OFERTA ACEPTADA* ✅\n\n"
+                                f"⚽ Jugador: *{offer['player']}*\n"
+                                f"💼 Tipo: *{offer['tipo']}*\n"
+                                f"💰 Monto: *{fmt_money(offer['amount'])}*\n"
+                                f"📤 De: *{offer['from_team']}* ({offer['from_presi']})\n"
+                                f"📥 A: *{offer['to_team']}* ({offer['to_presi']})\n"
+                                + (f"💬 Nota: _{resp_msg}_\n" if resp_msg else "") +
+                                f"\n🎉 ¡Transferencia completada!"
+                            )
+                            st.markdown("**📲 Notifica al presidente:**")
+                            wa_button(offer["from_presi"], wa_text, f"WhatsApp a {offer['from_presi']} — Aceptada")
 
                     with rcol2:
                         if st.button("❌ Rechazar", key=f"rej_{offer['id']}", use_container_width=True):
@@ -1190,7 +1277,16 @@ elif page == "🤝 Fichajes":
                                     if resp_msg:
                                         o.setdefault("messages", []).append({"from": presi_sel, "text": resp_msg, "ts": datetime.now().isoformat()})
                             set_state("offers", all_offers2)
-                            st.rerun()
+                            wa_text = (
+                                f"❌ *MMJ LEAGUE — OFERTA RECHAZADA* ❌\n\n"
+                                f"⚽ Jugador: *{offer['player']}*\n"
+                                f"💰 Monto ofertado: *{fmt_money(offer['amount'])}*\n"
+                                f"🏟️ Equipo: *{offer['to_team']}* rechazó la oferta\n"
+                                + (f"💬 Motivo: _{resp_msg}_\n" if resp_msg else "") +
+                                f"\nPuedes enviar una nueva oferta desde la app."
+                            )
+                            st.markdown("**📲 Notifica al presidente:**")
+                            wa_button(offer["from_presi"], wa_text, f"WhatsApp a {offer['from_presi']} — Rechazada")
 
                     # Contraoferta
                     with st.expander(f"💬 Contraoferta por {offer['player']}", expanded=False):
@@ -1209,7 +1305,17 @@ elif page == "🤝 Fichajes":
                                     o.setdefault("history", []).append({"action":"contrapropuesta","presi":presi_sel,"amount":counter_amount,"ts":datetime.now().isoformat()})
                             set_state("offers", all_offers2)
                             st.success(f"Contraoferta de {fmt_money(counter_amount)} enviada!")
-                            st.rerun()
+                            wa_text = (
+                                f"↩️ *MMJ LEAGUE — CONTRAOFERTA* ↩️\n\n"
+                                f"⚽ Jugador: *{offer['player']}*\n"
+                                f"💰 Tu oferta: *{fmt_money(offer['amount'])}*\n"
+                                f"↩️ Contraoferta: *{fmt_money(counter_amount)}*\n"
+                                f"🏟️ De: *{offer['to_team']}* ({presi_sel})\n"
+                                + (f"💬 Mensaje: _{counter_msg}_\n" if counter_msg else "") +
+                                f"\nEntra a la app para aceptar o negociar."
+                            )
+                            st.markdown("**📲 Notifica al presidente:**")
+                            wa_button(offer["from_presi"], wa_text, f"WhatsApp a {offer['from_presi']} — Contraoferta")
 
                     st.markdown("---")
 
@@ -1297,7 +1403,16 @@ elif page == "🤝 Fichajes":
                             })
                             set_state("completed_transfers", completed)
                             st.success(f"✅ Contraoferta aceptada! {offer['player']} → {offer['from_team']}")
-                            st.rerun()
+                            wa_text = (
+                                f"✅ *MMJ LEAGUE — CONTRAOFERTA ACEPTADA* ✅\n\n"
+                                f"⚽ Jugador: *{offer['player']}*\n"
+                                f"💼 Tipo: *{offer['tipo']}*\n"
+                                f"💰 Monto final: *{fmt_money(offer.get('counter_amount', offer['amount']))}*\n"
+                                f"🏟️ Va a: *{offer['from_team']}* ({offer['from_presi']})\n"
+                                f"\n🎉 ¡Transferencia completada!"
+                            )
+                            st.markdown("**📲 Notifica al presidente:**")
+                            wa_button(offer["to_presi"], wa_text, f"WhatsApp a {offer['to_presi']} — Contraoferta aceptada")
 
                 if offer["status"] == "Pendiente":
                     with action_cols[0]:
@@ -1307,7 +1422,14 @@ elif page == "🤝 Fichajes":
                                 if o["id"] == offer["id"]:
                                     o["status"] = "Retirada"
                             set_state("offers", all_offers2)
-                            st.rerun()
+                            wa_text = (
+                                f"🗑️ *MMJ LEAGUE — OFERTA RETIRADA*\n\n"
+                                f"⚽ Jugador: *{offer['player']}*\n"
+                                f"💰 Monto: *{fmt_money(offer['amount'])}*\n"
+                                f"📤 *{presi_sel}* retiró su oferta por *{offer['to_team']}*."
+                            )
+                            st.markdown("**📲 Notifica al presidente:**")
+                            wa_button(offer["to_presi"], wa_text, f"WhatsApp a {offer['to_presi']} — Oferta retirada")
 
                 st.markdown("---")
 
@@ -1375,7 +1497,16 @@ elif page == "🤝 Fichajes":
                         if o["id"] == sel_offer["id"]:
                             o.setdefault("messages", []).append({"from": presi_sel, "text": new_msg.strip(), "ts": datetime.now().isoformat()})
                     set_state("offers", all_offers2)
-                    st.rerun()
+                    other_presi = sel_offer["to_presi"] if sel_offer["from_presi"] == presi_sel else sel_offer["from_presi"]
+                    wa_text = (
+                        f"💬 *MMJ LEAGUE — NUEVO MENSAJE EN NEGOCIACIÓN*\n\n"
+                        f"⚽ Jugador: *{sel_offer['player']}*\n"
+                        f"✉️ *{presi_sel}*: _{new_msg.strip()}_\n"
+                        f"\nEntra a la app para responder."
+                    )
+                    st.success("Mensaje enviado.")
+                    st.markdown("**📲 Notifica al presidente:**")
+                    wa_button(other_presi, wa_text, f"WhatsApp a {other_presi} — Nuevo mensaje")
 
             # History of offer
             history = sel_offer.get("history", [])
