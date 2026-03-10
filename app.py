@@ -119,15 +119,76 @@ st.markdown("""
 
   /* ── TRANSFER SYSTEM ── */
   .transfer-offer-card {
-    background: linear-gradient(135deg, #0c1825, #081018);
-    border-radius: 14px; padding: 16px 18px; margin-bottom: 10px;
-    transition: all 0.2s; position: relative; overflow: hidden;
+    background: linear-gradient(135deg, #0c1825 0%, #081018 100%);
+    border-radius: 16px; padding: 0; margin-bottom: 14px;
+    transition: all 0.22s cubic-bezier(.4,0,.2,1);
+    position: relative; overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.35);
   }
-  .offer-pending  { border: 1px solid rgba(245,158,11,0.35); border-left: 4px solid #f59e0b; }
-  .offer-accepted { border: 1px solid rgba(34,197,94,0.3);  border-left: 4px solid #22c55e; }
-  .offer-rejected { border: 1px solid rgba(239,68,68,0.3);  border-left: 4px solid #ef4444; }
-  .offer-countered{ border: 1px solid rgba(139,92,246,0.3); border-left: 4px solid #8b5cf6; }
-  .offer-withdrawn{ border: 1px solid rgba(100,116,139,0.25); border-left: 4px solid #64748b; }
+  .transfer-offer-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 36px rgba(0,0,0,0.5);
+  }
+  .offer-pending  { border: 1px solid rgba(245,158,11,0.35); border-top: 3px solid #f59e0b; }
+  .offer-accepted { border: 1px solid rgba(34,197,94,0.3);  border-top: 3px solid #22c55e; }
+  .offer-rejected { border: 1px solid rgba(239,68,68,0.3);  border-top: 3px solid #ef4444; }
+  .offer-countered{ border: 1px solid rgba(139,92,246,0.3); border-top: 3px solid #8b5cf6; }
+  .offer-withdrawn{ border: 1px solid rgba(100,116,139,0.25); border-top: 3px solid #64748b; }
+
+  /* Transfer banner - team logos section */
+  .transfer-banner {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px 12px;
+    background: linear-gradient(135deg, rgba(232,184,75,0.04) 0%, transparent 60%);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    gap: 12px;
+  }
+  .transfer-team-block {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    min-width: 70px;
+  }
+  .transfer-team-logo {
+    width: 52px; height: 52px; border-radius: 50%; object-fit: contain;
+    background: rgba(255,255,255,0.04);
+    border: 2px solid rgba(255,255,255,0.08);
+    padding: 4px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  }
+  .transfer-team-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.72rem; font-weight: 800; color: #c0d4e0;
+    text-align: center; letter-spacing: 0.5px;
+  }
+  .transfer-team-presi {
+    font-size: 0.55rem; font-weight: 700; text-align: center;
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+  .transfer-arrow-block {
+    display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1;
+  }
+  .transfer-player-card {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .transfer-player-photo {
+    width: 56px; height: 56px; border-radius: 50%; object-fit: cover;
+    border: 2px solid rgba(232,184,75,0.4);
+    box-shadow: 0 0 18px rgba(232,184,75,0.15);
+  }
+  .transfer-player-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.85rem; font-weight: 900; color: #f0f4f8; text-align: center;
+  }
+  .transfer-arrow {
+    font-size: 1.1rem; color: #e8b84b; margin: 2px 0;
+  }
+  .transfer-amount {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.1rem; font-weight: 700; color: #e8b84b;
+    text-align: center;
+  }
+  .transfer-body {
+    padding: 12px 20px 16px;
+  }
 
   .offer-status-badge {
     display: inline-flex; align-items: center; gap: 4px;
@@ -140,6 +201,20 @@ st.markdown("""
   .status-rejected { background:rgba(239,68,68,0.12);  color:#ef4444; border:1px solid rgba(239,68,68,0.25); }
   .status-countered{ background:rgba(139,92,246,0.12); color:#8b5cf6; border:1px solid rgba(139,92,246,0.25); }
   .status-withdrawn{ background:rgba(100,116,139,0.1); color:#64748b; border:1px solid rgba(100,116,139,0.2); }
+
+  /* WA button */
+  .wa-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: linear-gradient(135deg, #128C7E, #25D366);
+    color: #fff !important; font-family: 'DM Sans', sans-serif;
+    font-size: 0.76rem; font-weight: 700;
+    padding: 7px 16px; border-radius: 8px; text-decoration: none !important;
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 2px 12px rgba(37,211,102,0.22);
+    transition: opacity 0.15s, transform 0.15s;
+    margin-top: 6px;
+  }
+  .wa-btn:hover { opacity: 0.88; transform: translateY(-1px); }
 
   /* ── NEGOTIATION THREAD ── */
   .nego-bubble {
@@ -309,19 +384,13 @@ def wa_link(to_presi: str, text: str) -> str:
 
 def wa_button(to_presi: str, text: str, label: str = "📲 Notificar por WhatsApp") -> None:
     """Renderiza un botón verde de WhatsApp que abre el chat con mensaje pre-armado."""
+    import urllib.parse
     link = wa_link(to_presi, text)
     if not link:
         return
     st.markdown(
-        f'<a href="{link}" target="_blank" style="'
-        f'display:inline-flex;align-items:center;gap:8px;'
-        f'background:linear-gradient(135deg,#128C7E,#25D366);'
-        f'color:#fff;font-family:\'DM Sans\',sans-serif;font-size:0.78rem;font-weight:700;'
-        f'padding:8px 18px;border-radius:8px;text-decoration:none;'
-        f'border:1px solid rgba(255,255,255,0.15);'
-        f'box-shadow:0 2px 12px rgba(37,211,102,0.25);'
-        f'transition:opacity 0.15s;">'
-        f'<svg width="18" height="18" viewBox="0 0 24 24" fill="white">'
+        f'<a href="{link}" target="_blank" class="wa-btn">'
+        f'<svg width="16" height="16" viewBox="0 0 24 24" fill="white">'
         f'<path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15'
         f'-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475'
         f'-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52'
@@ -337,6 +406,128 @@ def wa_button(to_presi: str, text: str, label: str = "📲 Notificar por WhatsAp
         f'S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/>'
         f'</svg>'
         f'{label}</a>',
+        unsafe_allow_html=True
+    )
+
+
+def render_offer_card(offer: dict, players_df, card_class: str = "offer-pending",
+                      status_badge: str = "", show_pct: bool = True) -> None:
+    """Renderiza una tarjeta de oferta estilo FIFA con logos de equipos prominentes."""
+    from_team   = offer.get("from_team", "")
+    to_team     = offer.get("to_team", "")
+    from_presi  = offer.get("from_presi", "")
+    to_presi    = offer.get("to_presi", "")
+    player_name = offer.get("player", "")
+    tipo        = offer.get("tipo", "")
+    amount      = offer.get("amount", 0)
+
+    from_logo  = TEAM_LOGOS.get(from_team, "")
+    to_logo    = TEAM_LOGOS.get(to_team, "")
+    from_pc    = PRESIDENTS.get(from_presi, {}).get("color", "#aaa")
+    to_pc      = PRESIDENTS.get(to_presi,  {}).get("color", "#aaa")
+    tipo_color = {"Compra":"#e8b84b","Cesion Corta":"#f97316","Cesion Larga":"#ef4444","Pagar Cesion":"#22c55e"}.get(tipo,"#aaa")
+
+    pdata      = PLAYER_DATA.get(player_name, {})
+    pos        = pdata.get("pos", "?")
+    pos_color  = POS_COLORS.get(pos, "#667eea")
+    nat        = pdata.get("nat", "")
+    photo      = get_player_photo(player_name, pdata.get("sofifa", 0))
+
+    mval_arr   = players_df[players_df["name"] == player_name]["price"].values
+    mval       = mval_arr[0] if len(mval_arr) else 0
+    pct_val    = (amount / mval * 100) if mval > 0 else 0
+    pct_color  = "#22c55e" if pct_val >= 100 else "#f59e0b" if pct_val >= 70 else "#ef4444"
+
+    flag_html  = f'<img src="{get_flag_url(nat)}" style="width:14px;height:10px;border-radius:1px;object-fit:cover;vertical-align:middle;" />' if nat else ""
+
+    logo_from_html = (f'<img src="{from_logo}" class="transfer-team-logo" />'
+                      if from_logo else
+                      f'<div style="width:52px;height:52px;border-radius:50%;background:#0d1a24;'
+                      f'border:2px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;'
+                      f'font-family:\'Bebas Neue\',sans-serif;font-size:1rem;color:#e8b84b;">{from_team}</div>')
+
+    logo_to_html = (f'<img src="{to_logo}" class="transfer-team-logo" />'
+                    if to_logo else
+                    f'<div style="width:52px;height:52px;border-radius:50%;background:#0d1a24;'
+                    f'border:2px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;'
+                    f'font-family:\'Bebas Neue\',sans-serif;font-size:1rem;color:#e8b84b;">{to_team}</div>')
+
+    try:
+        ts = datetime.fromisoformat(offer["created_at"]).strftime("%d/%m %H:%M")
+    except:
+        ts = "—"
+
+    pct_bar = ""
+    if show_pct and mval > 0:
+        bar_w = min(100, int(pct_val))
+        pct_bar = (
+            f'<div style="margin-top:10px;">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
+            f'<span style="font-size:0.58rem;color:#4a6070;text-transform:uppercase;letter-spacing:1px;">% del valor mercado</span>'
+            f'<span style="font-size:0.7rem;color:{pct_color};font-weight:800;">{pct_val:.0f}%</span>'
+            f'</div>'
+            f'<div style="background:rgba(255,255,255,0.05);border-radius:3px;height:4px;overflow:hidden;">'
+            f'<div style="width:{bar_w}%;background:{pct_color};height:4px;border-radius:3px;'
+            f'box-shadow:0 0 6px {pct_color}88;transition:width 0.4s;"></div>'
+            f'</div>'
+            f'</div>'
+        )
+
+    counter_badge = ""
+    if offer.get("counter_amount"):
+        counter_badge = (
+            f'<div style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.28);'
+            f'border-radius:6px;padding:5px 12px;margin-top:8px;display:inline-flex;align-items:center;gap:8px;">'
+            f'<span style="font-size:0.65rem;color:#8b5cf6;font-weight:700;">↩️ Contraoferta: {fmt_money(offer["counter_amount"])}</span>'
+            f'</div>'
+        )
+
+    st.markdown(
+        f'<div class="transfer-offer-card {card_class}">'
+        # ── Banner: from team → player → to team
+        f'<div class="transfer-banner">'
+        # FROM team
+        f'<div class="transfer-team-block">'
+        f'{logo_from_html}'
+        f'<span class="transfer-team-name">{from_team}</span>'
+        f'<span class="transfer-team-presi" style="color:{from_pc};">{from_presi}</span>'
+        f'</div>'
+        # Arrow + player + amount
+        f'<div class="transfer-arrow-block">'
+        f'<div class="transfer-player-card">'
+        f'<img src="{photo}" class="transfer-player-photo" />'
+        f'<div style="display:flex;align-items:center;gap:5px;margin-top:4px;">'
+        f'{flag_html}'
+        f'<span class="transfer-player-name">{player_name}</span>'
+        f'<span style="background:{pos_color}1a;color:{pos_color};border:1px solid {pos_color}40;'
+        f'font-size:0.5rem;font-weight:900;padding:1px 5px;border-radius:3px;">{pos}</span>'
+        f'</div>'
+        f'</div>'
+        f'<div class="transfer-arrow">→</div>'
+        f'<div class="transfer-amount">{fmt_money(amount)}</div>'
+        f'<span style="background:{tipo_color}18;color:{tipo_color};border:1px solid {tipo_color}35;'
+        f'font-size:0.58rem;font-weight:800;padding:2px 10px;border-radius:20px;margin-top:2px;">{tipo}</span>'
+        f'</div>'
+        # TO team
+        f'<div class="transfer-team-block">'
+        f'{logo_to_html}'
+        f'<span class="transfer-team-name">{to_team}</span>'
+        f'<span class="transfer-team-presi" style="color:{to_pc};">{to_presi}</span>'
+        f'</div>'
+        f'</div>'
+        # ── Body
+        f'<div class="transfer-body">'
+        f'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">'
+        f'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+        f'{status_badge}'
+        f'<span style="font-size:0.6rem;color:#3a5060;">Val. mercado: <span style="color:#c0d4e0;">{fmt_money(mval)}</span></span>'
+        f'</div>'
+        f'<span style="font-size:0.6rem;color:#2a3a48;">{ts}</span>'
+        f'</div>'
+        f'{pct_bar}'
+        f'{counter_badge}'
+        f'</div>'
+        f'</div>',
         unsafe_allow_html=True
     )
 
@@ -1005,15 +1196,43 @@ elif page == "🤝 Fichajes":
     my_pending_in = [o for o in all_offers if o["to_presi"] == presi_sel and o["status"] == "Pendiente"]
     my_pending_count_notif = len(my_pending_in)
 
+    my_team_logos_html = ""
+    for t in my_teams:
+        logo_url = TEAM_LOGOS.get(t, "")
+        if logo_url:
+            my_team_logos_html += (
+                f'<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">'
+                f'<img src="{logo_url}" style="width:32px;height:32px;object-fit:contain;border-radius:50%;'
+                f'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);" />'
+                f'<span style="font-size:0.55rem;color:#8aa0b0;font-weight:700;">{t}</span>'
+                f'</div>'
+            )
+        else:
+            my_team_logos_html += (
+                f'<span style="font-size:0.7rem;color:{presi_color};font-weight:800;">{t}</span>'
+            )
+
+    notif_html = ""
+    if my_pending_count_notif > 0:
+        s = "s" if my_pending_count_notif > 1 else ""
+        notif_html = (
+            f'<div style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);'
+            f'border-radius:8px;padding:8px 16px;flex-shrink:0;">'
+            f'<span style="color:#ef4444;font-size:0.82rem;font-weight:800;">🔔 {my_pending_count_notif} nueva{s}</span>'
+            f'</div>'
+        )
+
     st.markdown(
-        f'<div style="background:{presi_color}0d;border:1px solid {presi_color}30;border-radius:12px;padding:12px 18px;margin-bottom:18px;'
-        f'display:flex;align-items:center;gap:14px;">'
-        f'<div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.8rem;letter-spacing:3px;color:{presi_color};">{presi_sel}</div>'
-        f'<div>'
-        f'<div style="font-size:0.72rem;color:#7a9db0;">Mis equipos: <span style="color:#dce8f0;">{" · ".join(my_teams)}</span></div>'
-        f'<div style="font-size:0.65rem;color:#4a6070;margin-top:2px;">Presupuesto total: <span style="color:#e8b84b;font-weight:700;">{fmt_money(sum(TEAM_BUDGETS.get(t,0) for t in my_teams))}</span></div>'
+        f'<div style="background:{presi_color}0d;border:1px solid {presi_color}30;border-radius:14px;padding:14px 20px;margin-bottom:18px;'
+        f'display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
+        f'<div style="font-family:\'Bebas Neue\',sans-serif;font-size:2rem;letter-spacing:4px;color:{presi_color};min-width:80px;">{presi_sel}</div>'
+        f'<div style="flex:1;min-width:0;">'
+        f'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">{my_team_logos_html}</div>'
+        f'<div style="font-size:0.65rem;color:#4a6070;">Presupuesto total: '
+        f'<span style="color:#e8b84b;font-weight:700;font-family:\'Space Mono\',monospace;">'
+        f'{fmt_money(sum(TEAM_BUDGETS.get(t,0) for t in my_teams))}</span></div>'
         f'</div>'
-        f'{"<div style=\\'margin-left:auto;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:6px 14px;\\'><span style=\\'color:#ef4444;font-size:0.78rem;font-weight:700;\\'>🔔 " + str(my_pending_count_notif) + " oferta" + ("s" if my_pending_count_notif>1 else "") + " pendiente" + ("s" if my_pending_count_notif>1 else "") + "</span></div>" if my_pending_count_notif > 0 else ""}'
+        f'{notif_html}'
         f'</div>',
         unsafe_allow_html=True
     )
@@ -1037,13 +1256,19 @@ elif page == "🤝 Fichajes":
             rival_teams = sorted([t for t in players_df["team"].unique() if t not in my_teams])
 
             col_r1, col_r2 = st.columns(2)
-            rival_team = col_r1.selectbox("🏟️ Equipo", rival_teams, key="rival_sel")
+            rival_team = col_r1.selectbox("🏟️ Equipo rival", rival_teams, key="rival_sel")
             rival_presi = TEAM_PRESIDENT.get(rival_team, "?")
             rpc = PRESIDENTS.get(rival_presi, {}).get("color", "#aaa")
+            rival_logo = TEAM_LOGOS.get(rival_team, "")
+            rival_logo_html = (f'<img src="{rival_logo}" style="width:36px;height:36px;object-fit:contain;border-radius:50%;'
+                               f'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);padding:3px;" />'
+                               if rival_logo else "")
             col_r2.markdown(
-                f'<div style="padding:8px 14px;background:{rpc}10;border:1px solid {rpc}30;border-radius:8px;margin-top:22px;">'
-                f'<span style="font-size:0.72rem;color:{rpc};font-weight:700;">{rival_presi}</span>'
-                f' <span style="font-size:0.68rem;color:#4a6070;">gestiona {rival_team}</span>'
+                f'<div style="padding:8px 14px;background:{rpc}10;border:1px solid {rpc}30;border-radius:10px;margin-top:22px;'
+                f'display:flex;align-items:center;gap:10px;">'
+                f'{rival_logo_html}'
+                f'<div><span style="font-size:0.82rem;color:{rpc};font-weight:800;">{rival_presi}</span>'
+                f'<div style="font-size:0.62rem;color:#4a6070;">{TEAM_FULL_NAMES.get(rival_team, rival_team)}</div></div>'
                 f'</div>', unsafe_allow_html=True
             )
 
@@ -1188,36 +1413,14 @@ elif page == "🤝 Fichajes":
                     pct_color  = "#22c55e" if pct_val >= 100 else "#f59e0b" if pct_val >= 70 else "#ef4444"
                     safe_n     = str(offer["player"]).replace("'","").replace('"',"")
 
-                    st.markdown(
-                        f'<div class="transfer-offer-card offer-pending">'
-                        f'<div style="display:flex;align-items:center;gap:12px;">'
-                        f'<img src="{photo}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;" />'
-                        f'<div style="flex:1;min-width:0;">'
-                        f'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
-                        f'<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:1.05rem;font-weight:800;color:#f0f4f8;">{offer["player"]}</span>'
-                        f'<span style="background:{pos_color}1a;color:{pos_color};border:1px solid {pos_color}40;font-size:0.52rem;font-weight:900;padding:1px 5px;border-radius:3px;">{pos}</span>'
-                        f'<span style="background:{tipo_color}1a;color:{tipo_color};border:1px solid {tipo_color}35;font-size:0.6rem;font-weight:800;padding:2px 8px;border-radius:5px;">{offer["tipo"]}</span>'
-                        f'</div>'
-                        f'<div style="font-size:0.72rem;color:#5a7a90;margin-top:3px;">'
-                        f'De: <span style="color:{from_pc};font-weight:700;">{offer["from_presi"]}</span> ({offer["from_team"]}) '
-                        f'→ quiere de: <span style="font-weight:700;color:#c0d4e0;">{offer["to_team"]}</span>'
-                        f'</div>'
-                        f'<div style="margin-top:4px;display:flex;gap:12px;align-items:center;">'
-                        f'<span style="font-family:\'Space Mono\',monospace;font-size:0.85rem;color:#e8b84b;font-weight:700;">{fmt_money(offer["amount"])}</span>'
-                        f'<span style="font-size:0.65rem;color:{pct_color};font-weight:700;">{pct_val:.0f}% del valor</span>'
-                        f'<span style="font-size:0.62rem;color:#3a5060;">Val. mercado: {fmt_money(mval)}</span>'
-                        f'</div>'
-                        f'</div></div>',
-                        unsafe_allow_html=True
-                    )
+                    render_offer_card(offer, players_df, card_class="offer-pending",
+                                      status_badge='<span class="offer-status-badge status-pending">⏳ Pendiente</span>')
 
-                    # Messages
+                    # Last message preview
                     msgs = offer.get("messages", [])
                     if msgs:
                         last_msg = msgs[-1]
-                        is_theirs = last_msg["from"] != presi_sel
-                        align = "right" if not is_theirs else "left"
-                        bg    = "nego-sent" if not is_theirs else "nego-received"
+                        bg = "nego-sent" if last_msg["from"] != presi_sel else "nego-received"
                         st.markdown(
                             f'<div class="nego-bubble {bg}" style="margin:8px 0;">'
                             f'<span style="font-size:0.62rem;color:#4a6070;font-weight:700;">{last_msg["from"]}</span>'
@@ -1226,11 +1429,8 @@ elif page == "🤝 Fichajes":
                             unsafe_allow_html=True
                         )
 
-                    st.markdown('</div>', unsafe_allow_html=True)
-
                     # Response actions
                     resp_key = f"resp_{offer['id']}"
-                    counter_key = f"counter_{offer['id']}"
                     msg_key = f"msg_{offer['id']}"
 
                     rcol1, rcol2, rcol3 = st.columns([2, 2, 3])
@@ -1336,52 +1536,9 @@ elif page == "🤝 Fichajes":
                     "Retirada":       ("🗑️", "#64748b", "status-withdrawn", "offer-withdrawn"),
                 }
                 icon, sc, badge_cls, card_cls = status_styles.get(offer["status"], ("❓","#aaa","",""))
-                tipo_color = {"Compra":"#e8b84b","Cesion Corta":"#f97316","Cesion Larga":"#ef4444","Pagar Cesion":"#22c55e"}.get(offer["tipo"],"#aaa")
-                to_pc = PRESIDENTS.get(offer["to_presi"], {}).get("color", "#aaa")
-                try:
-                    ts = datetime.fromisoformat(offer["created_at"]).strftime("%d/%m %H:%M")
-                except:
-                    ts = "—"
 
-                pdata  = PLAYER_DATA.get(offer["player"], {})
-                photo  = get_player_photo(offer["player"], pdata.get("sofifa",0))
-                mval2  = players_df[players_df["name"] == offer["player"]]["price"].values
-                mval2  = mval2[0] if len(mval2) else 0
-                pct_v  = (offer["amount"] / mval2 * 100) if mval2 > 0 else 0
-
-                counter_info = ""
-                if offer["status"] == "Contrapropuesta" and offer.get("counter_amount"):
-                    counter_info = (f'<div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);'
-                                   f'border-radius:6px;padding:6px 10px;margin-top:8px;">'
-                                   f'<span style="font-size:0.7rem;color:#8b5cf6;font-weight:700;">↩️ Contraoferta recibida: {fmt_money(offer["counter_amount"])}</span>'
-                                   f'</div>')
-
-                msg_preview = ""
-                msgs = offer.get("messages", [])
-                if msgs:
-                    last = msgs[-1]
-                    msg_preview = f'<div style="font-size:0.65rem;color:#4a6070;margin-top:5px;font-style:italic;">💬 "{last["text"][:80]}{"..." if len(last["text"])>80 else ""}"</div>'
-
-                st.markdown(
-                    f'<div class="transfer-offer-card {card_cls}">'
-                    f'<div style="display:flex;align-items:center;gap:10px;">'
-                    f'<img src="{photo}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;flex-shrink:0;" />'
-                    f'<div style="flex:1;min-width:0;">'
-                    f'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
-                    f'<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:1rem;font-weight:800;color:#f0f4f8;">⚽ {offer["player"]}</span>'
-                    f'<span style="background:{tipo_color}1a;color:{tipo_color};font-size:0.6rem;font-weight:800;padding:2px 7px;border-radius:4px;">{offer["tipo"]}</span>'
-                    f'<span class="offer-status-badge {badge_cls}">{icon} {offer["status"]}</span>'
-                    f'</div>'
-                    f'<div style="font-size:0.7rem;color:#5a7a90;margin-top:3px;">'
-                    f'Para: <span style="color:{to_pc};font-weight:700;">{offer["to_presi"]}</span> ({offer["to_team"]}) · '
-                    f'<span style="font-family:\'Space Mono\',monospace;color:#e8b84b;font-weight:700;">{fmt_money(offer["amount"])}</span>'
-                    f' <span style="color:{("#22c55e" if pct_v>=100 else "#f59e0b" if pct_v>=70 else "#ef4444")};font-size:0.62rem;">({pct_v:.0f}%)</span>'
-                    f' · {ts}'
-                    f'</div>'
-                    f'{msg_preview}{counter_info}'
-                    f'</div></div>',
-                    unsafe_allow_html=True
-                )
+                status_badge_html = f'<span class="offer-status-badge {badge_cls}">{icon} {offer["status"]}</span>'
+                render_offer_card(offer, players_df, card_class=card_cls, status_badge=status_badge_html)
 
                 # Accept counter offer or withdraw
                 action_cols = st.columns([2, 2, 4])
@@ -1529,44 +1686,28 @@ elif page == "🤝 Fichajes":
         if not completed:
             st.info("Aún no se han completado transferencias en esta temporada.")
         else:
-            # Summary metrics
             total_moves = len(completed)
             total_spent = sum(t["amount"] for t in completed)
-            st.metric("Total transferencias", total_moves)
+            c1, c2 = st.columns(2)
+            c1.metric("Total transferencias", total_moves)
+            c2.metric("Valor total movido", fmt_money(total_spent))
 
             for t in sorted(completed, key=lambda x: x["date"], reverse=True):
-                tipo_color = {"Compra":"#e8b84b","Cesion Corta":"#f97316","Cesion Larga":"#ef4444","Pagar Cesion":"#22c55e"}.get(t["tipo"],"#aaa")
-                from_pc    = PRESIDENTS.get(t.get("from_presi",""), {}).get("color","#aaa")
-                to_pc      = PRESIDENTS.get(t.get("to_presi",""), {}).get("color","#aaa")
-                try:
-                    ds = datetime.fromisoformat(t["date"]).strftime("%d/%m/%Y %H:%M")
-                except:
-                    ds = "—"
-
-                pdata = PLAYER_DATA.get(t["player"], {})
-                photo = get_player_photo(t["player"], pdata.get("sofifa",0))
-
-                ol = logo_img(t["from_team"], 22)
-                dl = logo_img(t["to_team"], 22)
-
-                st.markdown(
-                    f'<div class="transfer-offer-card offer-accepted">'
-                    f'<div style="display:flex;align-items:center;gap:10px;">'
-                    f'<img src="{photo}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;" />'
-                    f'<div style="flex:1;min-width:0;">'
-                    f'<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">'
-                    f'<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:1rem;font-weight:800;color:#f0f4f8;">⚽ {t["player"]}</span>'
-                    f'<span style="background:{tipo_color}1a;color:{tipo_color};font-size:0.6rem;font-weight:800;padding:2px 7px;border-radius:4px;">{t["tipo"]}</span>'
-                    f'<span style="font-family:\'Space Mono\',monospace;font-size:0.82rem;color:#e8b84b;font-weight:700;">{fmt_money(t["amount"])}</span>'
-                    f'</div>'
-                    f'<div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap;">'
-                    f'{ol}<span style="font-size:0.7rem;color:{from_pc};font-weight:600;">{t["from_team"]} ({t.get("from_presi","?")})</span>'
-                    f'<span style="color:#22c55e;font-weight:900;">→</span>'
-                    f'{dl}<span style="font-size:0.7rem;color:{to_pc};font-weight:600;">{t["to_team"]} ({t.get("to_presi","?")})</span>'
-                    f'<span style="color:#3a5060;font-size:0.62rem;margin-left:auto;">{ds}</span>'
-                    f'</div></div></div></div>',
-                    unsafe_allow_html=True
-                )
+                # Build synthetic offer dict compatible with render_offer_card
+                synth = {
+                    "from_team":   t["from_team"],
+                    "to_team":     t["to_team"],
+                    "from_presi":  t.get("from_presi","?"),
+                    "to_presi":    t.get("to_presi","?"),
+                    "player":      t["player"],
+                    "tipo":        t["tipo"],
+                    "amount":      t["amount"],
+                    "created_at":  t.get("date", datetime.now().isoformat()),
+                    "counter_amount": None,
+                }
+                render_offer_card(synth, players_df, card_class="offer-accepted",
+                                  status_badge='<span class="offer-status-badge status-accepted">✅ Completada</span>',
+                                  show_pct=False)
 
     # ── Tab 6: Exportar Excel ─────────────────────────────────────────────────
     with tab_export:
