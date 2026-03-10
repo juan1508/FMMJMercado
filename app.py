@@ -317,6 +317,42 @@ def set_state(key, value):
     save_storage(data)
 
 
+# ── BUDGET MANAGEMENT ─────────────────────────────────────────────────────────
+def get_team_budget(team: str) -> float:
+    """Presupuesto actual = base inicial ± ajustes de transferencias."""
+    overrides = get_state("budget_overrides", {})
+    base = TEAM_BUDGETS.get(team, 0)
+    return overrides.get(team, base)
+
+def adjust_budget(team: str, delta: float):
+    """delta positivo = ingreso, negativo = gasto."""
+    data = load_storage()
+    overrides = data.get("budget_overrides", {})
+    current = overrides.get(team, TEAM_BUDGETS.get(team, 0))
+    overrides[team] = current + delta
+    data["budget_overrides"] = overrides
+    save_storage(data)
+
+def apply_transfer_budgets(offer: dict, final_amount: float):
+    """
+    Aplica cambios de presupuesto al completarse una transferencia:
+    - Compra:        comprador (-) / vendedor (+)
+    - Cesion C/L:    equipo receptor (-) / dueño del jugador (+)
+    - Pagar Cesion:  comprador (-) / equipo cedente (+)
+    """
+    tipo   = offer["tipo"]
+    buyer  = offer["from_team"]   # quien hace la oferta
+    seller = offer["to_team"]     # quien tiene el jugador
+    if tipo in ("Compra", "Cesion Corta", "Cesion Larga", "Pagar Cesion"):
+        adjust_budget(buyer,  -final_amount)
+        adjust_budget(seller, +final_amount)
+
+def can_afford(team: str, amount: float):
+    """Retorna (puede_pagar: bool, presupuesto_actual: float)."""
+    budget = get_team_budget(team)
+    return budget >= amount, budget
+
+
 # ── HELPERS ───────────────────────────────────────────────────────────────────
 TEAM_PRESIDENT = {}
 for _presi, _pdata in PRESIDENTS.items():
@@ -1143,6 +1179,7 @@ elif page == "🤝 Fichajes":
             if st.button("💥 Reset Completo", use_container_width=True):
                 set_state("offers", [])
                 set_state("completed_transfers", [])
+                set_state("budget_overrides", {})
                 st.success("Reset completo."); st.rerun()
 
     # ── Timer ─────────────────────────────────────────────────────────────────
@@ -1236,6 +1273,42 @@ elif page == "🤝 Fichajes":
         f'</div>',
         unsafe_allow_html=True
     )
+
+    # ── Budget overview panel ─────────────────────────────────────────────────
+    with st.expander("💰 Estado de Presupuestos — Todos los equipos", expanded=False):
+        for presi_name, pdata_b in PRESIDENTS.items():
+            pc = pdata_b["color"]
+            st.markdown(
+                f'<div style="font-family:\'Bebas Neue\',sans-serif;font-size:1rem;'
+                f'letter-spacing:3px;color:{pc};margin:10px 0 6px;">{presi_name}</div>',
+                unsafe_allow_html=True
+            )
+            bcols = st.columns(len(pdata_b["teams"]))
+            for ci, team in enumerate(pdata_b["teams"]):
+                budget    = get_team_budget(team)
+                base_b    = TEAM_BUDGETS.get(team, 0)
+                delta_b   = budget - base_b
+                tlogo     = TEAM_LOGOS.get(team, "")
+                tlogo_h   = f'<img src="{tlogo}" style="width:24px;height:24px;object-fit:contain;border-radius:50%;padding:2px;" />' if tlogo else ""
+                used_pct  = max(0, min(100, int((1 - budget/base_b)*100))) if base_b > 0 else 0
+                bar_c     = "#22c55e" if budget > base_b*0.5 else "#f59e0b" if budget > base_b*0.2 else "#ef4444"
+                delta_str = (f'<span style="font-size:0.6rem;color:{"#22c55e" if delta_b>=0 else "#ef4444"};font-weight:700;">'
+                             f'{"+" if delta_b>=0 else ""}{fmt_money(delta_b)}</span>' if delta_b != 0 else "")
+                with bcols[ci]:
+                    st.markdown(
+                        f'<div style="background:#0c1825;border:1px solid rgba(255,255,255,0.07);'
+                        f'border-radius:10px;padding:10px 12px;margin-bottom:6px;">'
+                        f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
+                        f'{tlogo_h}<span style="font-size:0.72rem;font-weight:800;color:#c0d4e0;">{team}</span>'
+                        f'</div>'
+                        f'<div style="font-family:\'Space Mono\',monospace;font-size:0.82rem;color:#e8b84b;font-weight:700;">{fmt_money(budget)}</div>'
+                        f'{delta_str}'
+                        f'<div style="margin-top:6px;background:rgba(255,255,255,0.05);border-radius:3px;height:3px;overflow:hidden;">'
+                        f'<div style="width:{100-used_pct}%;background:{bar_c};height:3px;border-radius:3px;"></div></div>'
+                        f'<div style="font-size:0.5rem;color:#3a5060;margin-top:3px;">{100-used_pct}% disponible</div>'
+                        f'</div>',
+                        unsafe_allow_html=True
+                    )
 
     tab_nueva, tab_bandeja, tab_mis, tab_negociar, tab_historial, tab_export = st.tabs([
         "📤 Nueva Oferta",
@@ -1337,11 +1410,50 @@ elif page == "🤝 Fichajes":
                 col_o2.markdown(f'<div style="padding-top:28px;font-family:\'Space Mono\',monospace;font-size:1.1rem;font-weight:700;color:{pct_color};">{pct_val:.0f}%</div>'
                                 f'<div style="font-size:0.58rem;color:#3a5060;">del valor</div>', unsafe_allow_html=True)
 
+                # ── Budget feasibility panel ──────────────────────────────────
+                afford, dest_budget = can_afford(dest_team, offer_amount)
+                remaining_after = dest_budget - offer_amount
+                bpct = min(100, int((offer_amount / dest_budget * 100))) if dest_budget > 0 else 100
+                b_bar_color = "#22c55e" if afford else "#ef4444"
+                dest_logo   = TEAM_LOGOS.get(dest_team, "")
+                dest_logo_h = f'<img src="{dest_logo}" style="width:28px;height:28px;object-fit:contain;border-radius:50%;padding:2px;" />' if dest_logo else ""
+
+                st.markdown(
+                    f'<div style="background:{"rgba(34,197,94,0.06)" if afford else "rgba(239,68,68,0.08)"};'
+                    f'border:1px solid {"rgba(34,197,94,0.25)" if afford else "rgba(239,68,68,0.35)"};'
+                    f'border-radius:12px;padding:14px 18px;margin:12px 0;">'
+                    f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'
+                    f'{dest_logo_h}'
+                    f'<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:0.95rem;font-weight:800;color:#c0d4e0;">{dest_team}</span>'
+                    f'<span style="margin-left:auto;font-size:0.75rem;font-weight:800;'
+                    f'color:{"#22c55e" if afford else "#ef4444"};">'
+                    f'{"✅ PUEDE PAGAR" if afford else "❌ PRESUPUESTO INSUFICIENTE"}</span>'
+                    f'</div>'
+                    f'<div style="display:flex;gap:20px;flex-wrap:wrap;">'
+                    f'<div><div style="font-family:\'Space Mono\',monospace;font-size:0.85rem;color:#e8b84b;font-weight:700;">{fmt_money(dest_budget)}</div>'
+                    f'<div style="font-size:0.55rem;color:#4a6070;text-transform:uppercase;letter-spacing:1px;">Presupuesto actual</div></div>'
+                    f'<div><div style="font-family:\'Space Mono\',monospace;font-size:0.85rem;color:#f59e0b;font-weight:700;">{fmt_money(offer_amount)}</div>'
+                    f'<div style="font-size:0.55rem;color:#4a6070;text-transform:uppercase;letter-spacing:1px;">Costo de la oferta</div></div>'
+                    f'<div><div style="font-family:\'Space Mono\',monospace;font-size:0.85rem;color:{"#22c55e" if afford else "#ef4444"};font-weight:700;">{fmt_money(remaining_after)}</div>'
+                    f'<div style="font-size:0.55rem;color:#4a6070;text-transform:uppercase;letter-spacing:1px;">Quedaría disponible</div></div>'
+                    f'</div>'
+                    f'<div style="margin-top:10px;background:rgba(255,255,255,0.05);border-radius:3px;height:5px;overflow:hidden;">'
+                    f'<div style="width:{bpct}%;background:{b_bar_color};height:5px;border-radius:3px;'
+                    f'box-shadow:0 0 6px {b_bar_color}88;"></div></div>'
+                    f'<div style="font-size:0.58rem;color:#3a5060;margin-top:4px;">{bpct}% del presupuesto disponible</div>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+
+                if not afford:
+                    st.error(f"⛔ **{dest_team}** no tiene presupuesto suficiente para esta oferta. Necesita {fmt_money(offer_amount - dest_budget)} más.")
+
                 msg = st.text_area("💬 Mensaje al presidente (opcional)", placeholder="Detalla tu propuesta...", max_chars=400, key="msg_offer")
 
                 col_btn1, col_btn2 = st.columns([3,1])
                 with col_btn1:
-                    if st.button("📤 Enviar Oferta", use_container_width=True, type="primary"):
+                    send_disabled = not afford
+                    if st.button("📤 Enviar Oferta", use_container_width=True, type="primary", disabled=send_disabled):
                         offer_id = f"offer_{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
                         new_offer = {
                             "id": offer_id,
@@ -1433,6 +1545,28 @@ elif page == "🤝 Fichajes":
                     resp_key = f"resp_{offer['id']}"
                     msg_key = f"msg_{offer['id']}"
 
+                    # Buyer budget check
+                    buyer_team   = offer["from_team"]
+                    buyer_afford, buyer_budget = can_afford(buyer_team, offer["amount"])
+                    buyer_logo   = TEAM_LOGOS.get(buyer_team, "")
+                    buyer_logo_h = f'<img src="{buyer_logo}" style="width:20px;height:20px;object-fit:contain;border-radius:50%;padding:1px;" />' if buyer_logo else ""
+                    st.markdown(
+                        f'<div style="background:{"rgba(34,197,94,0.06)" if buyer_afford else "rgba(239,68,68,0.08)"};'
+                        f'border:1px solid {"rgba(34,197,94,0.2)" if buyer_afford else "rgba(239,68,68,0.3)"};'
+                        f'border-radius:8px;padding:8px 14px;margin:6px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+                        f'{buyer_logo_h}'
+                        f'<span style="font-size:0.7rem;color:#8aa0b0;">'
+                        f'<b style="color:#c0d4e0;">{buyer_team}</b> — Presupuesto: '
+                        f'<b style="font-family:\'Space Mono\',monospace;color:#e8b84b;">{fmt_money(buyer_budget)}</b>'
+                        f'</span>'
+                        f'<span style="margin-left:auto;font-size:0.7rem;font-weight:800;'
+                        f'color:{"#22c55e" if buyer_afford else "#ef4444"};">'
+                        f'{"✅ Puede pagar" if buyer_afford else "⚠️ Presupuesto insuficiente"}'
+                        f'</span>'
+                        f'</div>',
+                        unsafe_allow_html=True
+                    )
+
                     rcol1, rcol2, rcol3 = st.columns([2, 2, 3])
                     resp_msg = rcol3.text_input("Mensaje respuesta", key=msg_key, placeholder="Escribe un comentario...", label_visibility="collapsed")
 
@@ -1454,6 +1588,7 @@ elif page == "🤝 Fichajes":
                                 "to_presi": offer["from_presi"], "date": datetime.now().isoformat()
                             })
                             set_state("completed_transfers", completed)
+                            apply_transfer_budgets(offer, offer["amount"])
                             st.success(f"✅ {offer['player']} → {offer['from_team']}")
                             wa_text = (
                                 f"✅ *MMJ LEAGUE — OFERTA ACEPTADA* ✅\n\n"
@@ -1559,6 +1694,7 @@ elif page == "🤝 Fichajes":
                                 "to_presi": offer["from_presi"], "date": datetime.now().isoformat()
                             })
                             set_state("completed_transfers", completed)
+                            apply_transfer_budgets(offer, offer["counter_amount"])
                             st.success(f"✅ Contraoferta aceptada! {offer['player']} → {offer['from_team']}")
                             wa_text = (
                                 f"✅ *MMJ LEAGUE — CONTRAOFERTA ACEPTADA* ✅\n\n"
