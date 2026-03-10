@@ -12,7 +12,7 @@ from mmj_data_config import (
     PLAYER_DATA, TEAM_LOGOS, TEAM_FULL_NAMES, PRESIDENTS,
     POS_COLORS, TEAM_BUDGETS, TEAM_DT, PLAYERS_RAW
 )
-from mmj_fichajes import render_fichajes
+from mmj_fichajes import render_fichajes, init_helpers as _fichajes_init_helpers
 
 
 st.set_page_config(
@@ -1158,4 +1158,5 @@ elif page == "📊 Estadísticas":
 elif page == "🤝 Fichajes":
     players_df = get_current_players()
     window_open = get_state("transfer_window_active", False)
+    _fichajes_init_helpers(fmt_money, get_team_budget, adjust_budget, get_player_photo)
     render_fichajes(players_df, get_state, set_state, page_header, window_open)
