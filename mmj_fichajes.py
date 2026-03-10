@@ -12,6 +12,21 @@ from mmj_data_config import (
     POS_COLORS, TEAM_BUDGETS,
 )
 
+# ── Module-level helpers (set by init_helpers, no circular imports) ───────────
+_fmt_fn       = None
+_get_budget_fn = None
+_adjust_fn    = None
+_photo_fn     = None
+
+def init_helpers(fmt_money, get_team_budget, adjust_budget, get_player_photo):
+    """Called from app.py before render_fichajes to inject helpers."""
+    global _fmt_fn, _get_budget_fn, _adjust_fn, _photo_fn
+    _fmt_fn        = fmt_money
+    _get_budget_fn = get_team_budget
+    _adjust_fn     = adjust_budget
+    _photo_fn      = get_player_photo
+
+
 RECALL_PCT = 0.20
 
 TIPOS = {
@@ -91,11 +106,9 @@ def _flag(code,w=13):
     if not code: return ""
     return f'<img src="https://flagcdn.com/28x21/{code}.png" style="width:{w}px;height:{int(w*.75)}px;border-radius:2px;object-fit:cover;vertical-align:middle;" />'
 def _photo_url(name):
-    from app import get_player_photo
-    return get_player_photo(name, PLAYER_DATA.get(name,{}).get("sofifa",0))
+    return _photo_fn(name, PLAYER_DATA.get(name,{}).get("sofifa",0))
 def _fmt(v):
-    from app import fmt_money
-    return fmt_money(v)
+    return _fmt_fn(v)
 def _team_presi(team):
     for p,pd in PRESIDENTS.items():
         if team in pd["teams"]: return p
@@ -164,9 +177,8 @@ def _deal_card(offer,players_df):
         unsafe_allow_html=True)
 
 def _finance_panel(team,players_df,cost=0,label="Finanzas"):
-    from app import get_team_budget
     ct=st.session_state.get("_ct_cache",[])
-    budget=get_team_budget(team); base_b=TEAM_BUDGETS.get(team,0)
+    budget=_get_budget_fn(team); base_b=TEAM_BUDGETS.get(team,0)
     spent=sum(t["amount"] for t in ct if t.get("from_team")==team)
     income=sum(t["amount"] for t in ct if t.get("to_team")==team)
     sq_val=players_df[players_df["team"]==team]["price"].sum()
@@ -219,18 +231,17 @@ def _player_info_card(name,players_df):
     return pi
 
 def _apply_budgets(offer,final_amount):
-    from app import adjust_budget
     tipo=offer["tipo"]; buyer=offer["from_team"]; seller=offer["to_team"]
     if tipo in ("Compra","Cesion","PagarCesion","OfertaCedido"):
-        adjust_budget(buyer,-final_amount); adjust_budget(seller,+final_amount)
+        _adjust_fn(buyer,-final_amount); _adjust_fn(seller,+final_amount)
     elif tipo=="Intercambio":
         pass
     elif tipo=="Dinero+Jugador":
         if final_amount>0:
-            adjust_budget(buyer,-final_amount); adjust_budget(seller,+final_amount)
+            _adjust_fn(buyer,-final_amount); _adjust_fn(seller,+final_amount)
     elif tipo=="Recall":
         multa=offer.get("recall_penalty",0)
-        adjust_budget(buyer,-multa); adjust_budget(seller,+multa)
+        _adjust_fn(buyer,-multa); _adjust_fn(seller,+multa)
 
 def _complete(offer,final_amount,actor,note,get_state,set_state):
     offers=get_state("offers",[])
@@ -258,7 +269,6 @@ def _set_status(offer_id,status,actor,note,get_state,set_state):
     set_state("offers",offers)
 
 def _tab_nueva(presi,players_df,get_state,set_state,window_open):
-    from app import get_team_budget
     if not window_open:
         st.warning("⛔ La ventana de fichajes no está activa."); return
     my_teams=PRESIDENTS[presi]["teams"]
@@ -323,7 +333,7 @@ def _tab_nueva(presi,players_df,get_state,set_state,window_open):
     cost_d=offer_amount if tipo!="Intercambio" else 0
     if cost_d>0:
         _finance_panel(dest_team,players_df,cost=cost_d)
-        bud_now=get_team_budget(dest_team)
+        bud_now=_get_budget_fn(dest_team)
         if bud_now-cost_d<0:
             st.warning(f"⚠️ **{dest_team}** no tiene presupuesto suficiente. Le faltan **{_fmt(abs(bud_now-cost_d))}** — podés enviar la oferta igualmente, pero no podrá aceptarse hasta tener fondos.")
     msg=st.text_area("💬 Mensaje (opcional)",placeholder="Detalla tu propuesta...",max_chars=400,key=f"msg_{presi}")
@@ -344,7 +354,6 @@ def _tab_nueva(presi,players_df,get_state,set_state,window_open):
         st.markdown("**📲 Notificá al presidente:**"); _wa_btn(rival_presi,wa_text,f"WhatsApp a {rival_presi}")
 
 def _tab_bandeja(presi,players_df,get_state,set_state):
-    from app import get_team_budget
     all_offers=get_state("offers",[]); received=[o for o in all_offers if o["to_presi"]==presi and o["status"]=="Pendiente"]
     if not received: st.info("📭 No tenés ofertas pendientes."); return
     for offer in sorted(received,key=lambda x:x["created_at"],reverse=True):
@@ -353,7 +362,7 @@ def _tab_bandeja(presi,players_df,get_state,set_state):
         if msgs:
             m=msgs[-1]; cls="fc-bubble-me" if m["from"]==presi else "fc-bubble-them"
             st.markdown(f'<div class="{cls}"><div class="fc-bubble-who">{m["from"]}</div><div class="fc-bubble-txt">{m["text"]}</div></div>',unsafe_allow_html=True)
-        buyer_bud=get_team_budget(offer["from_team"]); buyer_after=buyer_bud-offer["amount"]; can_pay=buyer_after>=0
+        buyer_bud=_get_budget_fn(offer["from_team"]); buyer_after=buyer_bud-offer["amount"]; can_pay=buyer_after>=0
         _finance_panel(offer["from_team"],players_df,cost=offer["amount"],label="Finanzas del comprador")
         note_key=f"note_{offer['id']}"
         rc1,rc2,rc3=st.columns([2,2,3])
@@ -392,14 +401,13 @@ def _tab_bandeja(presi,players_df,get_state,set_state):
         st.divider()
 
 def _tab_mis_ofertas(presi,players_df,get_state,set_state):
-    from app import get_team_budget
     all_offers=get_state("offers",[]); sent=[o for o in all_offers if o["from_presi"]==presi]
     if not sent: st.info("No enviaste ninguna oferta todavía."); return
     for offer in sorted(sent,key=lambda x:x["created_at"],reverse=True):
         _deal_card(offer,players_df)
         if offer["status"]=="Contrapropuesta" and offer.get("counter_amount") is not None:
             co_amt=offer["counter_amount"]; co_pl=offer.get("counter_player","")
-            bud=get_team_budget(offer["from_team"]); can=(bud-co_amt)>=0
+            bud=_get_budget_fn(offer["from_team"]); can=(bud-co_amt)>=0
             st.markdown(f'<div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.28);border-radius:8px;padding:9px 13px;margin:5px 0;"><span style="font-size:.7rem;color:#8b5cf6;font-weight:800;">↩️ Contraoferta: {_fmt(co_amt)}'+(f' + {co_pl}' if co_pl else "")+f'</span></div>',unsafe_allow_html=True)
             ac1,ac2=st.columns(2)
             with ac1:
@@ -453,7 +461,6 @@ def _tab_historial(presi,players_df,get_state):
         _deal_card(synth,players_df)
 
 def _admin_global(players_df,get_state,set_state):
-    from app import get_team_budget
     st.markdown(f'<div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.1rem;letter-spacing:4px;color:#e8b84b;margin-bottom:10px;">🔐 PANEL ADMINISTRADOR GLOBAL</div>',unsafe_allow_html=True)
     with st.expander("⚙️ Controles de ventana",expanded=False):
         a1,a2,a3,a4=st.columns(4)
@@ -476,7 +483,7 @@ def _admin_global(players_df,get_state,set_state):
             st.markdown(f'<div style="font-family:\'Bebas Neue\',sans-serif;font-size:.88rem;letter-spacing:3px;color:{pc};margin:10px 0 6px;border-bottom:1px solid {pc}22;padding-bottom:3px;">{pname}</div>',unsafe_allow_html=True)
             cols=st.columns(len(pdata["teams"]))
             for ci,team in enumerate(pdata["teams"]):
-                budget=get_team_budget(team); base_b=TEAM_BUDGETS.get(team,0); delta=budget-base_b
+                budget=_get_budget_fn(team); base_b=TEAM_BUDGETS.get(team,0); delta=budget-base_b
                 spent=sum(t["amount"] for t in ct if t.get("from_team")==team)
                 income=sum(t["amount"] for t in ct if t.get("to_team")==team)
                 sq_val=players_df[players_df["team"]==team]["price"].sum()
@@ -503,7 +510,6 @@ def render_fichajes(players_df,get_state,set_state,page_header,window_open):
     mode=st.radio("Modo",["🧑‍💼 Oficina privada","🔐 Admin global"],horizontal=True,label_visibility="collapsed")
     if mode=="🔐 Admin global":
         _admin_global(players_df,get_state,set_state); return
-    from app import get_team_budget
     presi=st.selectbox("Presidente",["JNKA","MATI","MAXI"],key="presi_sel_office")
     presi_color=PRESIDENTS[presi]["color"]; my_teams=PRESIDENTS[presi]["teams"]
     all_offers=get_state("offers",[])
@@ -512,7 +518,7 @@ def render_fichajes(players_df,get_state,set_state,page_header,window_open):
     notif_total=len(pending_in)+len(counter_in)
     logos_h=""
     for t in my_teams:
-        lurl=TEAM_LOGOS.get(t,""); bud=get_team_budget(t); red=bud<0
+        lurl=TEAM_LOGOS.get(t,""); bud=_get_budget_fn(t); red=bud<0
         if lurl: logos_h+=(f'<div style="display:flex;flex-direction:column;align-items:center;gap:2px;"><img src="{lurl}" style="width:36px;height:36px;object-fit:contain;border-radius:50%;border:2px solid {"#ef4444" if red else "rgba(255,255,255,.1)"};" /><span style="font-size:.5rem;color:{"#ef4444" if red else "#8aa0b0"};font-weight:700;">{t}</span><span style="font-size:.46rem;color:{"#ef4444" if red else "#e8b84b"};font-family:\'Space Mono\',monospace;">{_fmt(bud)}</span></div>')
     notif_h=f'<div class="fc-notif"><span>🔔 {notif_total} notif.</span></div>' if notif_total>0 else ""
     st.markdown(f'<div class="fc-presi-bar" style="background:{presi_color}0d;border:1px solid {presi_color}28;"><div style="font-family:\'Bebas Neue\',sans-serif;font-size:2rem;letter-spacing:4px;color:{presi_color};">{presi}</div><div style="flex:1;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">{logos_h}</div>{notif_h}</div>',unsafe_allow_html=True)
